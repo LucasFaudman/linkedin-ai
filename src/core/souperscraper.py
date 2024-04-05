@@ -123,7 +123,7 @@ class SouperScraper:
             # Add user_agent to Selenium Options object
             if user_agent:
                 self.selenium_options.add_argument(
-                    f'user-agent="{user_agent}"')
+                    f'--user-agent="{user_agent}"')
 
             # Add proxy to Selenium Options object
             if proxy:
@@ -162,7 +162,7 @@ class SouperScraper:
         # Attempt to find locator and expected_condition in split_attr
         # If found, return a partial function with locator and expected_condition
         # For example:
-        # wait_visibility_of_element_located_by_id(locator_value) is equivalent to
+        # self.wait_for_visibility_of_element_located_by_id(locator_value) is equivalent to
         # WebDriverWait(self.webdriver, 3).until(EC.visibility_of_element_located((By.ID, locator_value))
         locator = None
         expected_condition = None

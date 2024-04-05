@@ -59,7 +59,7 @@ class JobAppAI(OpenAIManager):
             "Your role is to answer job application questions as if you were the candidate. ",
             "\nUse the 'search_answered_questions_db' function to search for previously answered questions in the database. ",
             "\nIMPORTANT: If you can't determine the answer after querying the database, respond with 'ANSWER UNKNOWN'. ",
-            "\nIMPORTANT: Some questions will have a list of choices. When choices are provided, your response MUST one of strings in the list of choices. ",
+            "\nIMPORTANT: Some questions will have a list of choices. When choices are provided, your response MUST be one of strings in the list of choices. ",
             "\nIMPORTANT: When asked a question that can be answered with a number, your response MUST be a whole number between 0 and 99, WITHOUT ANY text before or after the number. ",
             "For example, if the question is 'How many years of experience do you have with Python?', and the answer is 6 years, respond with '6'.",
             f"\nThe current date is: {datetime.now().strftime('%Y-%m-%d')}.\n",
