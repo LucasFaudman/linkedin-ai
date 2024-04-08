@@ -1,6 +1,6 @@
-from pydantic import BaseModel, validator, field_validator
+from pydantic import BaseModel
 from typing import Optional, Union
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 class Question(BaseModel):

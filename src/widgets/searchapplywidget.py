@@ -25,7 +25,7 @@ class SearchFiltersWidget(qtw.QWidget):
         if (layout := self.layout()) is None:
             layout = qtw.QFormLayout(self)
 
-        layout.addWidget(qtw.QLabel('Search Filters'))
+        #layout.addWidget(qtw.QLabel('Search Filters'))
 
         self.search_input = qtw.QLineEdit()
         self.search_input.setPlaceholderText(
@@ -134,13 +134,15 @@ class SearchAndApplyWidget(qtw.QWidget):
 
     def __init__(self):
         super().__init__()
-        layout = qtw.QHBoxLayout(self)
+        layout = qtw.QVBoxLayout(self)
+        splitter = qtw.QSplitter(qtc.Qt.Horizontal, self)
+        layout.addWidget(splitter)
 
         filters_search_button_layout = qtw.QVBoxLayout()
         self.search_filters_widget = SearchFiltersWidget({})
         filters_search_button_layout.addWidget(self.search_filters_widget)
 
-        self.search_jobs_button = qtw.QPushButton('Search Jobs')
+        self.search_jobs_button = qtw.QPushButton('Search for Jobs')
         self.search_jobs_button.clicked.connect(self.search_jobs)
         filters_search_button_layout.addWidget(self.search_jobs_button)
 
@@ -164,12 +166,21 @@ class SearchAndApplyWidget(qtw.QWidget):
         self.apply_jobs_button.clicked.connect(self.apply_to_selected_jobs)
         select_apply_layout.addWidget(self.apply_jobs_button)
 
-        self.search_filters_widget.setSizePolicy(
-            qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
-        self.jobs_table_widget.setSizePolicy(
-            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Expanding)
-        layout.addLayout(filters_search_button_layout, 1)
-        layout.addLayout(select_apply_layout, 3)
+        #self.search_filters_widget.setSizePolicy(
+        #    qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
+        #self.jobs_table_widget.setSizePolicy(
+        #    qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Expanding)
+        
+        filters_groupbox = qtw.QGroupBox('Search for Jobs')
+        filters_groupbox.setLayout(filters_search_button_layout)
+        splitter.addWidget(filters_groupbox)
+        select_apply_groupbox = qtw.QGroupBox('Apply to Jobs')
+        select_apply_groupbox.setLayout(select_apply_layout)
+        splitter.addWidget(select_apply_groupbox)
+        splitter.setSizes([1, 3])
+
+
+
 
     @qtc.pyqtSlot(list)
     def update_filters(self, new_input_dict: dict) -> None:
