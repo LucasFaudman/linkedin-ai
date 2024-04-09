@@ -506,7 +506,7 @@ class LinkedInAutomator:
         initial_tab = self.scraper.current_tab
         for job in jobs_iter:
             print(
-                f"Trying fun{job.id}: {job.title} at {job.company.name} in {job.location}")
+                f"Trying {func} on {job.id}: {job.title} at {job.company.name} in {job.location}")
             try:
                 self.scraper.new_tab()
                 self.scraper.switch_to_tab(index=-1)
