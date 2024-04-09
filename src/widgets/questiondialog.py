@@ -15,9 +15,9 @@ class QuestionDialog(qtw.QDialog):
         layout = qtw.QVBoxLayout(self)
         layout.addWidget(self.label)
 
-        self.answer_line_edit = qtw.QLineEdit()
+        self.answer_text_edit = qtw.QTextEdit()
         self.answer_combo_box = qtw.QComboBox()
-        layout.addWidget(self.answer_line_edit)
+        layout.addWidget(self.answer_text_edit)
         layout.addWidget(self.answer_combo_box)
 
         self.button_box = qtw.QDialogButtonBox(qtw.QDialogButtonBox.Ok | qtw.QDialogButtonBox.Cancel)
@@ -30,12 +30,12 @@ class QuestionDialog(qtw.QDialog):
         self.label.setText(question.question)
         if is_text_input := question.choices is None:
             self.answer_combo_box.hide()
-            self.answer_line_edit.show()
-            self.answer_line_edit.clear()
+            self.answer_text_edit.show()
+            self.answer_text_edit.clear()
             if question.answer:
-                self.answer_line_edit.setText(question.answer)
+                self.answer_text_edit.setText(question.answer)
         else:
-            self.answer_line_edit.hide()
+            self.answer_text_edit.hide()
             self.answer_combo_box.show()
             self.answer_combo_box.clear()
             self.answer_combo_box.addItems(question.choices)
@@ -51,7 +51,7 @@ class QuestionDialog(qtw.QDialog):
 
     def get_answered_question(self) -> Question:
         if self.is_text_input:
-            self.question.answer = self.answer_line_edit.text()
+            self.question.answer = self.answer_text_edit.toPlainText().strip()
         else:
             self.question.answer = self.answer_combo_box.currentText()
                 

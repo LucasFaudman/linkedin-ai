@@ -227,7 +227,6 @@ class OpenAIManager:
 
         self.ai_runs[run.id] = run
         return run
-
     
     def get_assistant(self, ass_id):
         """Gets assistant from self or openai client if not retrieved yet"""
@@ -284,15 +283,22 @@ class OpenAIManager:
             active_run_id = next(
                 (msg_part for msg_part in e.message.split() if "run_" in msg_part), None)
             if active_run_id:
-                print(f"Canceling {active_run_id}")
-                canceled_run = self.client.beta.threads.runs.cancel(
-                    run_id=active_run_id, thread_id=thread_id)
-
-                if self.db:
-                    self.db.update_model(canceled_run)
-                return self.add_message_to_thread(content, thread_id)
+                canceled_run = self.cancel_run(active_run_id, thread_id)
+            
+            return self.add_message_to_thread(content, thread_id)
 
     
+    def cancel_run(self, run_id, thread_id):
+        print(f"Canceling {run_id}")
+        canceled_run = self.client.beta.threads.runs.cancel(
+            run_id=run_id, thread_id=thread_id)
+
+        if self.db:
+            self.db.update_model(canceled_run)
+
+        return canceled_run
+
+
     def wait_for_response(self, thread_id, run_id, sleep_interval=5, **kwargs):
         """
         Waits for a response and handles status updates. 

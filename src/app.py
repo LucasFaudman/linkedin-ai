@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 from widgets import LoginDialog, QuestionDialog, SearchAndApplyWidget, JobAppDBInteractionWidget, QuestionDBInteractionWidget, SettingsWidget
 from liautomator import LinkedInAutomator, sleep
 from models import Job, Question
-
+from core.aimanager import Assistant, Thread, Run, Message
 
 def thread_safe_dbs(func):
     """
@@ -40,6 +40,7 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
     """
     # Signals
     scraperInitialized = qtc.pyqtSignal()
+    aiAndDBsInitialized = qtc.pyqtSignal()
     loginReady = qtc.pyqtSignal()
     loginResult = qtc.pyqtSignal(bool)
     updatingFilterOptions = qtc.pyqtSignal()
@@ -73,6 +74,11 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
         """Initalize the SouperScraper. Emits signal when the scaper is ready."""
         LinkedInAutomator.init_scraper(self)
         self.scraperInitialized.emit()
+
+    def init_dbs(self):
+        """Initalize the databases. Emits signal when the databases are ready."""
+        LinkedInAutomator.init_dbs(self)
+        self.aiAndDBsInitialized.emit()
 
     def goto_login(self):
         """Go to the LinkedIn login page. Emits signal when ready for login input."""
@@ -205,6 +211,7 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
         """Delete a list of questions. Emits signal with each question deleted."""
         for question in questions:
             self.job_app_db.delete_model(question)
+            self.deletedQuestion.emit(question)
             print('Deleted question:', question.question)
 
     @qtc.pyqtSlot(Question)
@@ -273,7 +280,7 @@ class MainWindow(qtw.QMainWindow):
                 '2. Webdriver Path',
             )
 
-    def connect_signals(self):
+    def connect_li_automator_signals(self):
         if not self.li_auto:
             raise ValueError(
                 'LinkedIn Automator not set up. Call setup_li_auto first.')
@@ -354,6 +361,33 @@ class MainWindow(qtw.QMainWindow):
         self.question_db_view_widget.deleteQuestions.connect(self.li_auto.delete_questions)
         self.li_auto.deletedQuestion.connect(self.deleted_question)
 
+        self.li_auto.aiAndDBsInitialized.connect(self.connect_ai_signals)
+
+    @qtc.pyqtSlot()
+    def connect_ai_signals(self):
+        if not self.li_auto:
+            raise ValueError(
+                'LinkedIn Automator not set up. Call setup_li_auto first.')
+        if not self.li_auto.ai:
+            raise ValueError(
+                'LinkedIn Automator AI not set up. Call setup_li_auto and init_dbs first.')
+        
+        self.li_auto.ai.createdAssistant.connect(self.created_assistant)
+        self.li_auto.ai.updatedAssistant.connect(self.updated_assistant)
+        self.li_auto.ai.createdThread.connect(self.created_thread)
+        self.li_auto.ai.addedMessageToThread.connect(self.added_message_to_thread)
+        self.li_auto.ai.createdRun.connect(self.created_run)
+        self.li_auto.ai.cancelledRun.connect(self.cancelled_run)
+        self.li_auto.ai.runStatusUpdated.connect(self.run_status_updated)
+        self.li_auto.ai.runCompleted.connect(self.run_completed)
+        self.li_auto.ai.newToolCall.connect(self.new_tool_call)
+        self.li_auto.ai.toolOutputsSubmitted.connect(self.tool_outputs_submitted)
+        self.li_auto.ai.waitingForResponse.connect(self.waiting_for_response)
+        self.li_auto.ai.responseReceived.connect(self.reponse_received)
+        self.li_auto.ai.askingQuestion.connect(self.asking_question)
+        self.li_auto.ai.answeredQuestion.connect(self.answered_question)
+        self.li_auto.ai.answerUnknown.connect(self.answer_unknown)
+
 
     @qtc.pyqtSlot(dict)
     def setup_li_auto(self, settings):
@@ -372,7 +406,7 @@ class MainWindow(qtw.QMainWindow):
         self.li_auto.moveToThread(self.li_thread)
         self.li_thread.start()
 
-        self.connect_signals()
+        self.connect_li_automator_signals()
         self.li_auto.init_scraper()
         self.login(self.settings['li_username'],
                    self.settings['li_password'], auto_login)
@@ -421,6 +455,7 @@ class MainWindow(qtw.QMainWindow):
     def update_status(self, message):
         self.statusBar().showMessage(message)
 
+    # LinkedInAutomator Slots
     @qtc.pyqtSlot()
     def updating_filter_options(self):
         self.update_status('Updating Filter Options...')
@@ -485,6 +520,69 @@ class MainWindow(qtw.QMainWindow):
     @qtc.pyqtSlot(Question)
     def deleted_question(self, question):
         self.update_status(f"Deleted question: {question.question}")            
+
+    # JobAppAI Slots
+
+    @qtc.pyqtSlot(Assistant)
+    def created_assistant(self, assistant):
+        self.update_status(f"Created assistant: {assistant.id}")
+
+    @qtc.pyqtSlot(Assistant, dict)
+    def updated_assistant(self, assistant, data):
+        self.update_status(f"Updated assistant: {assistant.id} with {data}")
+
+    @qtc.pyqtSlot(Thread)
+    def created_thread(self, thread):
+        self.update_status(f"Created thread: {thread.id}")
+
+    @qtc.pyqtSlot(Message)
+    def added_message_to_thread(self, message):
+        self.update_status(f"Added message: {message.id} to thread: {message.thread_id} with content: {message.content}") 
+
+    @qtc.pyqtSlot(Run)
+    def created_run(self, run):
+        self.update_status(f"Created run: {run.id}")
+
+    @qtc.pyqtSlot(Run)
+    def cancelled_run(self, run):
+        self.update_status(f"Cancelled run: {run.id}")
+
+    @qtc.pyqtSlot(Run)
+    def run_status_updated(self, run):
+        self.update_status(f"Run {run.id} status updated: {run.status}")
+
+    @qtc.pyqtSlot(Run)
+    def run_completed(self, run):
+        self.update_status(f"Run {run.id} completed successfully with status: {run.status}")
+
+    @qtc.pyqtSlot(str, dict)
+    def new_tool_call(self, tool_name, arguments):
+        self.update_status(f"AI called tool: {tool_name} with arguments: {arguments}")
+
+    @qtc.pyqtSlot(str, dict, object)
+    def tool_outputs_submitted(self, tool_name, arguments, outputs):
+        self.update_status(f"Submitted tool {tool_name} outputs to AI: {outputs} for arguments: {arguments}")
+
+    @qtc.pyqtSlot(int)
+    def waiting_for_response(self, sleep_interval):
+        self.update_status(f"Waiting {sleep_interval} seconds for response from AI")
+
+    @qtc.pyqtSlot(object)
+    def reponse_received(self, messages):
+        if messages.data:
+            self.update_status(f"Received response from AI: {messages.data[0]}")
+
+    @qtc.pyqtSlot(Question)
+    def asking_question(self, question):
+        self.update_status(f"Asking AI question: {question.question}")
+
+    @qtc.pyqtSlot(Question)
+    def answered_question(self, question):
+        self.update_status(f"Answered AI question: {question.question} with answer: {question.answer}")
+
+    @qtc.pyqtSlot(Question)
+    def answer_unknown(self, question):
+        self.update_status(f"AI could not answer question: {question.question}")
 
     def quit(self):
         self.teardown_li_auto_thread_if_running()

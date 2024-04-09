@@ -28,7 +28,6 @@ def parse_relative_date(date_str: str) -> datetime:
 class LinkedInAutomator:
 
     def __init__(self,
-                 webdriver_path: str,
                  li_username: Optional[str] = None,
                  li_password: Optional[str] = None,
                  resume_path: Union[str, Path] = "resume_path.txt",
@@ -38,9 +37,11 @@ class LinkedInAutomator:
                  thread_id=None,
                  api_key="OPENAI_API_KEY",
                  model="gpt-3.5-turbo",
+                 webdriver_path: str = "chromedriver",
+                 user_agent=None,
+                 proxy=None
                  ):
 
-        self.webdriver_path = webdriver_path
         self.li_username = li_username
         self.li_password = li_password
         self.resume = (resume_path if isinstance(
@@ -54,6 +55,11 @@ class LinkedInAutomator:
         self.thread_id = thread_id
         self.api_key = api_key
         self.model = model
+
+        self.webdriver_path = webdriver_path
+        self.user_agent = user_agent
+        self.proxy = proxy
+
 
     def init_dbs(self):
         self.job_app_db = JobAppDB(self.job_app_db_path)
@@ -77,7 +83,7 @@ class LinkedInAutomator:
             self.ai.db.close_connection()
 
     def init_scraper(self):
-        self.scraper = SouperScraper(executable_path=self.webdriver_path)
+        self.scraper = SouperScraper(executable_path=self.webdriver_path, user_agent=self.user_agent, proxy=self.proxy)
 
     def close_scraper(self):
         if self.scraper:
@@ -308,15 +314,17 @@ class LinkedInAutomator:
                     job.skills.append(skill)
 
         if apply_button := soup.find('div', attrs={'class': 'jobs-apply-button--top-card'}):
-            job.easy_apply = "Easy Apply" in apply_button.text
+            job.easy_apply = 'Easy Apply' in apply_button.text or 'Continue' in apply_button.text
             # TODO check if job is already applied to and set status to "applied" if it is
 
         elif post_apply_content := soup.find('div', attrs={'class': 'post-apply-timeline__content'}):
-            for post_appy_entity in post_apply_content.find_all('li', attrs={'class': 'post-apply-timeline__entity'}):
+            for post_appy_entity in post_apply_content.find_all('li', attrs={'class': 'post-apply-timeline__entity'})[::-1]:
                 activity = post_appy_entity.find('span', attrs={'class': 'full-width'}).text.strip()
                 time = post_appy_entity.find('span', attrs={'class': 'post-apply-timeline__entity-time'}).text.strip()
                 if activity == 'Application viewed':
                     job.status = 'viewed'
+                elif activity == 'Application submitted':
+                    job.status = 'applied'
                 print(activity, time)
 
         job.date_scraped = datetime.now()
@@ -335,6 +343,8 @@ class LinkedInAutomator:
         while (soup := self.scraper.soup) and not soup.find('button', attrs={'aria-label': 'Submit application'}):
             try:
                 for input_elm, question in self.get_questions():
+                    needs_input = not question.answer
+
                     # Get the answer from the DB if it exists
                     if (saved_question := self.job_app_db.get_model(Question, question.question)) and saved_question.answer:
                         question.answer = saved_question.answer
@@ -349,6 +359,8 @@ class LinkedInAutomator:
                             break
                         self.job_app_db.update_model(question)
 
+                    if needs_input:
+                        # Input the answer when not prefilled
                         if isinstance(input_elm, dict):
                             input_elm = input_elm[question.answer]
 
@@ -502,20 +514,21 @@ class LinkedInAutomator:
         self.click_button_with_aria_label('Dismiss')
         return filters
 
-    def _try_func_on_jobs_in_new_tab(self, jobs_iter: Iterable[Job], func: Callable[[Job], Job], close_tab_after=True) -> Iterator[Job]:
+    def _try_func_on_jobs(self, jobs_iter: Iterable[Job], func: Callable[[Job], Job], new_tab=False, close_tab_after=False) -> Iterator[Job]:
         initial_tab = self.scraper.current_tab
         for job in jobs_iter:
             print(
                 f"Trying {func} on {job.id}: {job.title} at {job.company.name} in {job.location}")
             try:
-                self.scraper.new_tab()
-                self.scraper.switch_to_tab(index=-1)
+                if new_tab:
+                    self.scraper.new_tab()
+                    self.scraper.switch_to_tab(index=-1)                
                 yield func(job)
             except Exception as e:
                 print(
                     f"Failed {job.id}: {job.title} at {job.company.name} in {job.location}. Error: {e}")
 
-            if close_tab_after:
+            if new_tab and close_tab_after:
                 try:
                     self.scraper.close()
                 except Exception as e:
@@ -527,13 +540,13 @@ class LinkedInAutomator:
                     print(f"Failed to switch back to initial tab. Error: {e}")
 
     def apply_to_jobs(self, jobs_iter: Iterable[Job]) -> Iterator[Job]:
-        return self._try_func_on_jobs_in_new_tab(jobs_iter, self.apply_to_job)
+        return self._try_func_on_jobs(jobs_iter, self.apply_to_job)
 
     def update_jobs(self, jobs_iter: Iterable[Job]) -> Iterator[Job]:
-        return self._try_func_on_jobs_in_new_tab(jobs_iter, self.update_job)
+        return self._try_func_on_jobs(jobs_iter, self.update_job)
 
     def open_jobs(self, jobs_iter: Iterable[Job]) -> Iterator[Job]:
-        return self._try_func_on_jobs_in_new_tab(jobs_iter, self.goto_job, close_tab_after=False)
+        return self._try_func_on_jobs(jobs_iter, self.goto_job, new_tab=True, close_tab_after=False)
 
     def answer_job_question(self, question: Question) -> Question:
         # Otherwise have the AI answer the question

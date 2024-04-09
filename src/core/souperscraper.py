@@ -127,7 +127,7 @@ class SouperScraper:
 
             # Add proxy to Selenium Options object
             if proxy:
-                self.selenium_options.add_argument(f'--proxy-server={proxy}')
+                self.selenium_options.add_argument(f'--proxy-server="{proxy}"')
 
         # Create Selenium WebDriver object from Service and Options objects
         self.webdriver = selenium_webdriver_cls(
