@@ -61,3 +61,44 @@ class JobAppDBInteractionWidget(qtw.QWidget):
     def open_selected_jobs(self) -> None:
         selected_jobs = self.jobs_table_widget.get_selected_rows()
         self.openJobs.emit(selected_jobs)
+
+
+class QuestionDBInteractionWidget(qtw.QWidget):
+    getQuestionsFromDB = qtc.pyqtSignal()
+    editQuestions = qtc.pyqtSignal(list)
+    deleteQuestions = qtc.pyqtSignal(list)
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        layout = qtw.QVBoxLayout(self)
+
+        self.refresh_button = qtw.QPushButton('Refresh Questions from DB')
+        self.refresh_button.clicked.connect(self.getQuestionsFromDB.emit)
+        self.questions_table_widget = ModelTableWidget([], resize_columns=False)
+        layout.addWidget(self.refresh_button)
+        layout.addWidget(self.questions_table_widget)
+
+        self.button_layout = qtw.QHBoxLayout()
+        self.edit_questions_button = qtw.QPushButton('Edit Selected Questions')
+        self.delete_questions = qtw.QPushButton('Delete Selected Questions')        
+        self.edit_questions_button.clicked.connect(self.edit_selected_questions)
+        self.delete_questions.clicked.connect(self.delete_selected_questions)
+
+        self.button_layout.addWidget(self.edit_questions_button)
+        self.button_layout.addWidget(self.delete_questions)
+        layout.addLayout(self.button_layout)
+
+
+    @qtc.pyqtSlot(list)
+    def update_questions(self, data_list) -> None:
+        self.questions_table_widget.update_table(data_list)
+
+    def edit_selected_questions(self) -> None:
+        selected_questions = self.questions_table_widget.get_selected_rows()
+        self.editQuestions.emit(selected_questions)
+
+    def delete_selected_questions(self) -> None:
+        selected_questions = self.questions_table_widget.get_selected_rows()
+        self.deleteQuestions.emit(selected_questions)
+    
+

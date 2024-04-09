@@ -214,7 +214,9 @@ class LinkedInAutomator:
         return job
 
     def update_job(self, job: Job) -> Job:
+        self.job_app_db.insert_model(job)
         self.goto_job(job, sleep_secs=3)
+        
         soup = self.scraper.soup
 
         if ((details_container := soup.find('div', attrs={'class': 'job-details-jobs-unified-top-card__primary-description-container'}))
@@ -280,13 +282,13 @@ class LinkedInAutomator:
                 else:
                     max_pay = min_pay
 
-                if "/hr" in min_pay:
+                if min_pay.endswith("/hr"):
                     job.min_hourly = float(min_pay[:-3])
                     job.max_hourly = float(max_pay[:-3])
                     job.min_salary = job.min_hourly * 40 * 50
                     job.max_salary = job.max_hourly * 40 * 50
                     job.pay_type = "hourly"
-                elif "/yr" in min_pay:
+                elif min_pay.endswith("/yr"):
                     job.min_salary = float(min_pay[:-3])
                     job.max_salary = float(max_pay[:-3])
                     job.min_hourly = job.min_salary / (40 * 50)
@@ -309,10 +311,19 @@ class LinkedInAutomator:
             job.easy_apply = "Easy Apply" in apply_button.text
             # TODO check if job is already applied to and set status to "applied" if it is
 
+        elif post_apply_content := soup.find('div', attrs={'class': 'post-apply-timeline__content'}):
+            for post_appy_entity in post_apply_content.find_all('li', attrs={'class': 'post-apply-timeline__entity'}):
+                activity = post_appy_entity.find('span', attrs={'class': 'full-width'}).text.strip()
+                time = post_appy_entity.find('span', attrs={'class': 'post-apply-timeline__entity-time'}).text.strip()
+                if activity == 'Application viewed':
+                    job.status = 'viewed'
+                print(activity, time)
+
         job.date_scraped = datetime.now()
         if not job.status:
             job.status = 'scraped'
-        self.job_app_db.insert_model(job)
+        
+        self.job_app_db.update_model(job)
         return job
 
     def apply_to_job(self, job: Job):
@@ -495,7 +506,7 @@ class LinkedInAutomator:
         initial_tab = self.scraper.current_tab
         for job in jobs_iter:
             print(
-                f"Tying {job.id}: {job.title} at {job.company.name} in {job.location}")
+                f"Trying fun{job.id}: {job.title} at {job.company.name} in {job.location}")
             try:
                 self.scraper.new_tab()
                 self.scraper.switch_to_tab(index=-1)

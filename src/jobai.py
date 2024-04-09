@@ -76,7 +76,7 @@ class JobAppAI(OpenAIManager):
                 thread_id=self.thread_id,
                 system_prompt=system_prompt,
                 tools_names=["search_answered_questions_db"],
-                sleep_interval=2
+                sleep_interval=1
             )
 
             self.assistant_id = ass.id

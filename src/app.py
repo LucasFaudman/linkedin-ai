@@ -6,7 +6,7 @@ from pathlib import Path
 from functools import wraps
 from argparse import ArgumentParser
 
-from widgets import LoginDialog, QuestionDialog, SearchAndApplyWidget, JobAppDBInteractionWidget, SettingsWidget
+from widgets import LoginDialog, QuestionDialog, SearchAndApplyWidget, JobAppDBInteractionWidget, QuestionDBInteractionWidget, SettingsWidget
 from liautomator import LinkedInAutomator, sleep
 from models import Job, Question
 
@@ -53,7 +53,8 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
     searchComplete = qtc.pyqtSignal(list)
     applyingComplete = qtc.pyqtSignal(int, int)
     newQuestion = qtc.pyqtSignal(Question)
-    updatedQuestion = qtc.pyqtSignal(Question)
+    updatedQuestion = qtc.pyqtSignal(Question)    
+    deletedQuestion = qtc.pyqtSignal(Question)
     answerNeeded = qtc.pyqtSignal(Question)
 
     def __init__(self,
@@ -189,6 +190,22 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
             print('Answered question:', question.answer)
 
         return question
+    
+    @qtc.pyqtSlot(list)
+    @thread_safe_dbs
+    def edit_questions(self, questions: list[Question]) -> None:
+        """Edit a list of questions. Emits signal with each question edited."""
+        for question in questions:
+            self.get_answer_from_user(question)
+            self.updatedQuestion.emit(question)
+
+    @qtc.pyqtSlot(list)
+    @thread_safe_dbs
+    def delete_questions(self, questions: list[Question]) -> None:
+        """Delete a list of questions. Emits signal with each question deleted."""
+        for question in questions:
+            self.job_app_db.delete_model(question)
+            print('Deleted question:', question.question)
 
     @qtc.pyqtSlot(Question)
     def set_last_question(self, question: Question):
@@ -218,12 +235,15 @@ class MainWindow(qtw.QMainWindow):
 
         self.search_widget = SearchAndApplyWidget()
         self.job_app_db_view_widget = JobAppDBInteractionWidget()
+        self.question_db_view_widget = QuestionDBInteractionWidget()
         self.settings_widget = SettingsWidget(config_path)
 
         self.central_tab_widget.addTab(
             self.search_widget, 'Search and Apply for Jobs')
         self.central_tab_widget.addTab(
             self.job_app_db_view_widget, 'View Job Database')
+        self.central_tab_widget.addTab(
+            self.question_db_view_widget, 'View Question Database')
         self.central_tab_widget.addTab(self.settings_widget, 'Settings')
 
         self.login_dialog = LoginDialog(parent=self)
@@ -242,7 +262,7 @@ class MainWindow(qtw.QMainWindow):
             self.setup_li_auto(self.settings_widget.get_settings())
         else:
             # Show a welcome message and get settings if the config file does not exist
-            self.central_tab_widget.setCurrentIndex(2)
+            self.central_tab_widget.setCurrentIndex(3)
             qtw.QMessageBox.information(
                 self,
                 'Welcome to LinkedIn Automator',
@@ -305,17 +325,35 @@ class MainWindow(qtw.QMainWindow):
         # Update statusbar when question is answered
         self.li_auto.updatedQuestion.connect(self.updated_question)
 
+        # Request jobs from the database
         self.job_app_db_view_widget.getJobsFromDB.connect(
             self.li_auto.get_jobs_from_db)
+        # Populate the jobs table with the jobs from the database
         self.li_auto.getJobsFromDBResult.connect(
             self.job_app_db_view_widget.update_jobs)
+        # Apply to selected jobs in the database
         self.job_app_db_view_widget.applyJobs.connect(
             self.li_auto.apply_to_jobs)
         self.job_app_db_view_widget.applyJobs.connect(self.begin_applying)
+        # Scrape and update selected jobs in the database
         self.job_app_db_view_widget.scrapeJobs.connect(
             self.li_auto.scrape_jobs)
         self.li_auto.updatedJob.connect(self.updated_job)
+        # Open selected jobs in new tabs
         self.job_app_db_view_widget.openJobs.connect(self.li_auto.open_jobs)
+
+        # Request questions from the database
+        self.question_db_view_widget.getQuestionsFromDB.connect(
+            self.li_auto.get_questions_from_db)
+        # Populate the questions table with the questions from the database
+        self.li_auto.getQuestionsFromDBResult.connect(
+            self.question_db_view_widget.update_questions)
+        # Edit selected questions in the database
+        self.question_db_view_widget.editQuestions.connect(self.li_auto.edit_questions)
+        # Delete selected questions in the database
+        self.question_db_view_widget.deleteQuestions.connect(self.li_auto.delete_questions)
+        self.li_auto.deletedQuestion.connect(self.deleted_question)
+
 
     @qtc.pyqtSlot(dict)
     def setup_li_auto(self, settings):
@@ -443,6 +481,10 @@ class MainWindow(qtw.QMainWindow):
     def updated_question(self, question):
         self.update_status(
             f"Answered question: {question.question}. Answer: {question.answer}")
+
+    @qtc.pyqtSlot(Question)
+    def deleted_question(self, question):
+        self.update_status(f"Deleted question: {question.question}")            
 
     def quit(self):
         self.teardown_li_auto_thread_if_running()
