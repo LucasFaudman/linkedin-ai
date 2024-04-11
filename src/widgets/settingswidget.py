@@ -13,17 +13,20 @@ class SettingsWidget(qtw.QWidget):
 
     DEFAULT_CONFIG = {
         'resume_path': "./resume.txt",
+        'default_cover_letter_path': None,
         'job_app_db_path': "./jobs.db",
         "auto_login": True,
         'li_username': None,
         'li_password': None,
         'li_auto_login': True,
         'api_key': None,
-        'model': 'gpt-3.5-turbo',
+        'model': 'gpt-4',
         'assistant_id': None,
         'thread_id': None,
         'ai_db_path': './ai.db',
-        'webdriver_path': "./chromedriver"
+        'webdriver_path': "./chromedriver",
+        'user_agent': None,
+        'proxy': None
     }
 
     def __init__(self, config_path: Path, **kwargs) -> None:
@@ -47,6 +50,22 @@ class SettingsWidget(qtw.QWidget):
             initial_path=self.config['resume_path'], button_text='Select Resume')
         user_settings_layout.addRow(
             'Resume Path:', self.resume_path_file_select)
+        
+        self.default_cover_letter_path_file_select = FileSelectWidget(
+            initial_path=self.config['default_cover_letter_path'], button_text='Select Default Cover Letter')
+        user_settings_layout.addRow(
+            'Default Cover Letter Path:', self.default_cover_letter_path_file_select)
+
+        self.cover_letter_action_combo_box = qtw.QComboBox()
+        cover_letter_actions = {
+            'skip': 'Skip Cover Letters (saves application and sets job status to "needs cover letter")',
+            'default': 'Use Default Cover Letter for all jobs',
+            'generate': 'Generate Custom Cover Letter for each job with AI'
+        }
+        for action, description in cover_letter_actions.items():
+            self.cover_letter_action_combo_box.addItem(description, action)
+        self.cover_letter_action_combo_box.setCurrentText(cover_letter_actions[self.config['cover_letter_action']])
+        user_settings_layout.addRow('Cover Letter Action:', self.cover_letter_action_combo_box) 
 
         self.job_app_db_file_select = FileSelectWidget(
             initial_path=self.config['job_app_db_path'], button_text='Select Job Application DB Path')
@@ -115,6 +134,16 @@ class SettingsWidget(qtw.QWidget):
             initial_path=self.config['webdriver_path'], button_text='Select Webdriver Path')
         selenium_settings_layout.addRow(
             'Webdriver Path:', self.webdriver_path_file_select)
+        
+        self.user_agent_line_edit = qtw.QLineEdit()
+        self.user_agent_line_edit.setText(self.config['user_agent'])
+        selenium_settings_layout.addRow(
+            'User Agent:', self.user_agent_line_edit)
+        
+        self.proxy_line_edit = qtw.QLineEdit()
+        self.proxy_line_edit.setText(self.config['proxy'])
+        selenium_settings_layout.addRow(
+            'Proxy:', self.proxy_line_edit)
 
         # Update button
         self.update_button = qtw.QPushButton('Update Settings')
@@ -124,6 +153,8 @@ class SettingsWidget(qtw.QWidget):
     def get_settings(self) -> dict[str, Optional[str | Path | bool]]:
         settings = {
             'resume_path': self.resume_path_file_select.get_file_path(),
+            'default_cover_letter_path': self.default_cover_letter_path_file_select.get_file_path(),
+            "cover_letter_action": self.cover_letter_action_combo_box.currentData(),
             'job_app_db_path': self.job_app_db_file_select.get_file_path(),
             'li_username': self.li_username_line_edit.text(),
             'li_password': self.li_password_line_edit.text(),
@@ -133,7 +164,9 @@ class SettingsWidget(qtw.QWidget):
             'assistant_id': self.assistant_id_combo_box.currentText(),
             'thread_id': self.thread_id_combo_box.currentText(),
             'ai_db_path': self.ai_db_file_select.get_file_path(),
-            'webdriver_path': self.webdriver_path_file_select.get_file_path()
+            'webdriver_path': self.webdriver_path_file_select.get_file_path(),
+            'user_agent': self.user_agent_line_edit.text(),
+            'proxy': self.proxy_line_edit.text()
         }
         return settings
 

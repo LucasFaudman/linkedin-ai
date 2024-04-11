@@ -19,9 +19,16 @@ def thread_safe_dbs(func):
     """
     @wraps(func)
     def wrapper(instance, *args, **kwargs):
-        instance.init_dbs()
-        rval = func(instance, *args, **kwargs)
-        instance.close_dbs()
+        rval = None
+        try:
+            # Init the databases before calling the function
+            instance.init_dbs()
+            rval = func(instance, *args, **kwargs)
+        except Exception as e:
+            print(e)
+        finally:
+            # Finally ensures dbs are closed even if an exception is raised
+            instance.close_dbs()
         return rval
     return wrapper
 
@@ -444,12 +451,13 @@ class MainWindow(qtw.QMainWindow):
         if not self.li_auto:
             raise ValueError(
                 'LinkedIn Automator not set up. Call setup_li_auto first.')
-
-        sleep(2)
+        
+        self.central_tab_widget.setCurrentIndex(0)
+        sleep(1)
         self.li_auto.get_jobs_from_db()
         self.li_auto.get_questions_from_db()
         self.li_auto.get_filter_options('Python Automation')
-        self.central_tab_widget.setCurrentIndex(0)
+        
 
     @qtc.pyqtSlot(str)
     def update_status(self, message):

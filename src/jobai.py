@@ -9,6 +9,9 @@ from models import Question
 
 
 class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
+    """OpenAIManager with PyQt signals for emitting events."""
+
+    # Signals
     createdAssistant = qtc.pyqtSignal(Assistant)
     updatedAssistant = qtc.pyqtSignal(Assistant, dict)
     createdThread = qtc.pyqtSignal(Thread)
@@ -27,35 +30,46 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
         OpenAIManager.__init__(self, *args, **kwargs)
 
     def create_assistant(self, *args, **kwargs) -> Assistant:
+        """Creates an assistant and emits createdAssistant signal with the Assistant object."""
         assistant = OpenAIManager.create_assistant(self, *args, **kwargs)
         self.createdAssistant.emit(assistant)
         return assistant
     
     def create_thread(self, *args, **kwargs) -> Thread:
+        """Creates a thread and emits createdThread signal with the Thread object."""
         thread = OpenAIManager.create_thread(self, *args, **kwargs)
         self.createdThread.emit(thread)
         return thread
     
     def create_run(self, *args, **kwargs) -> Run:
+        """Creates a run and emits createdRun signal with the Run object."""
         run = OpenAIManager.create_run(self, *args, **kwargs)
         self.createdRun.emit(run)
         return run
     
+    def cancel_run(self, *args, **kwargs):
+        """Cancels a run and emits cancelledRun signal with the Run object."""
+        cancelled_run = OpenAIManager.cancel_run(self, *args, **kwargs)
+        self.cancelledRun.emit(cancelled_run)
+        return cancelled_run    
+    
     def add_message_to_thread(self, *args, **kwargs) -> Message:
+        """Adds a message to a thread and emits addedMessageToThread signal with the Message object."""
         message = OpenAIManager.add_message_to_thread(self, *args, **kwargs)
         self.addedMessageToThread.emit(message)
         return message
     
-    def cancel_run(self, *args, **kwargs):
-        cancelled_run = OpenAIManager.cancel_run(self, *args, **kwargs)
-        self.cancelledRun.emit(cancelled_run)
-        return cancelled_run
-
     def wait_for_response(self, thread_id, run_id, sleep_interval=5, **kwargs):
         """
         Waits for a response and handles status updates. 
         Calls handle_submit_tool_outputs_required to submit tool outputs when run requires action.
-        Returns messages once recursive loop is complete. 
+        Returns messages once recursive loop is complete.
+
+        Emits signals:
+        - runStatusUpdated: when run status is updated emit the run object
+        - runCompleted: when run status is completed emit the run object
+        - waitingForResponse: when waiting for response emit the sleep interval
+        - responseReceived: when messages are received emit the messages object
         """
         run = None
         while not run or run.status in ("queued", "in_progress"):
@@ -97,7 +111,13 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
 
     
     def handle_submit_tool_outputs_required(self, run, sleep_interval=5, **kwargs):
-        """Executes tool calls and submits tool outputs to run."""
+        """
+        Executes tool calls and submits tool outputs to run.
+        
+        Emits signals:
+        - newToolCall: when a new tool call is made emit the tool name and arguments
+        - toolOutputsSubmitted: when tool outputs are submitted emit the tool name, arguments, and tool output
+        """
 
         tool_outputs = []
         for tool_call in run.required_action.submit_tool_outputs.tool_calls:
@@ -130,10 +150,12 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
 
 
 class JobAppAI(OpenAIManagerQObject):
+    """OpenAIManager for answering job application questions, generating cover letters, and more to be added."""
     askingQuestion = qtc.pyqtSignal(Question)
     answeredQuestion = qtc.pyqtSignal(Question)
     answerUnknown = qtc.pyqtSignal(Question)
 
+    # AI Tool/Function definition for searching job application database for questions
     SEARCH_JOB_DB_FOR_QUESTIONS_TOOL = {
         "type": "function",
                 "function": {
@@ -180,7 +202,18 @@ class JobAppAI(OpenAIManagerQObject):
             question.question: question.answer for question in questions if question.answer}
         return tool_output
 
-    def answer_job_questions(self, *questions: Question) -> tuple:
+    def answer_job_questions(self, *questions: Question) -> tuple[Question, ...]:
+        """
+        Answers job application questions using the AI assistant.
+        Updates the question object with the answer when the answer is not 'ANSWER UNKNOWN'.
+        Returns a tuple of updated question objects.
+
+        Emits signals:
+        - askingQuestion: when beginning asking a question emit the question object
+        - answeredQuestion: when a question is answered emit the question object
+        - answerUnknown: when a question is answered with 'ANSWER UNKNOWN' emit the question object
+        """
+
         system_prompt = ''.join((
             "Your role is to answer job application questions as if you were the candidate. ",
             "\nUse the 'search_answered_questions_db' function to search for previously answered questions in the database. ",
@@ -198,7 +231,7 @@ class JobAppAI(OpenAIManagerQObject):
             self.askingQuestion.emit(question)
 
             ass, thread, run, messages = self.run_with_assistant(
-                str(question),
+                str(question), # Leverage pydantic BaseModel builtin __str__ method to format questions with/without choices accordingly
                 ass_id=self.assistant_id,
                 thread_id=self.thread_id,
                 system_prompt=system_prompt,
