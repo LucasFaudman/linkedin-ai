@@ -14,6 +14,8 @@ class SettingsWidget(qtw.QWidget):
     DEFAULT_CONFIG = {
         'resume_path': "./resume.txt",
         'default_cover_letter_path': None,
+        'cover_letter_output_dir': './cover-letters/',
+        'cover_letter_action': 'skip',
         'job_app_db_path': "./jobs.db",
         "auto_login": True,
         'li_username': None,
@@ -32,19 +34,26 @@ class SettingsWidget(qtw.QWidget):
     def __init__(self, config_path: Path, **kwargs) -> None:
         super().__init__(**kwargs)
 
+        self.config = self.DEFAULT_CONFIG.copy()
         self.config_path = config_path
         if self.config_path.exists():
             with self.config_path.open('r') as f:
-                self.config = json_load(f)
-        else:
-            self.config = self.DEFAULT_CONFIG.copy()
-
+                self.config.update(json_load(f))
+            
         layout = qtw.QVBoxLayout(self)
+        
+        self.scroll_area = qtw.QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+
+        scrollable_widget = qtw.QWidget()
+        scroll_area_layout = qtw.QVBoxLayout(scrollable_widget)
+        self.scroll_area.setWidget(scrollable_widget)
+        layout.addWidget(self.scroll_area)
 
         # User settings
         user_settings_groupbox = qtw.QGroupBox('User Settings')
         user_settings_layout = qtw.QFormLayout(user_settings_groupbox)
-        layout.addWidget(user_settings_groupbox)
+        scroll_area_layout.addWidget(user_settings_groupbox)
 
         self.resume_path_file_select = FileSelectWidget(
             initial_path=self.config['resume_path'], button_text='Select Resume')
@@ -56,6 +65,11 @@ class SettingsWidget(qtw.QWidget):
         user_settings_layout.addRow(
             'Default Cover Letter Path:', self.default_cover_letter_path_file_select)
 
+        self.cover_letter_output_dir_file_select = FileSelectWidget(
+            initial_path=self.config['cover_letter_output_dir'], button_text='Select Cover Letter Output Path')
+        user_settings_layout.addRow(
+            'Cover Letter Output Directory:', self.cover_letter_output_dir_file_select)
+
         self.cover_letter_action_combo_box = qtw.QComboBox()
         cover_letter_actions = {
             'skip': 'Skip Cover Letters (saves application and sets job status to "needs cover letter")',
@@ -66,7 +80,7 @@ class SettingsWidget(qtw.QWidget):
             self.cover_letter_action_combo_box.addItem(description, action)
         self.cover_letter_action_combo_box.setCurrentText(cover_letter_actions[self.config['cover_letter_action']])
         user_settings_layout.addRow('Cover Letter Action:', self.cover_letter_action_combo_box) 
-
+        
         self.job_app_db_file_select = FileSelectWidget(
             initial_path=self.config['job_app_db_path'], button_text='Select Job Application DB Path')
         user_settings_layout.addRow(
@@ -75,7 +89,7 @@ class SettingsWidget(qtw.QWidget):
         # LinkedIn settings
         linkedin_settings_groupbox = qtw.QGroupBox('LinkedIn Settings')
         linkedin_settings_layout = qtw.QFormLayout(linkedin_settings_groupbox)
-        layout.addWidget(linkedin_settings_groupbox)
+        scroll_area_layout.addWidget(linkedin_settings_groupbox)
 
         self.li_username_line_edit = qtw.QLineEdit()
         self.li_username_line_edit.setText(self.config['li_username'])
@@ -96,7 +110,7 @@ class SettingsWidget(qtw.QWidget):
         # OpenAI settings
         ai_settings_groupbox = qtw.QGroupBox('OpenAI Settings')
         ai_settings_layout = qtw.QFormLayout(ai_settings_groupbox)
-        layout.addWidget(ai_settings_groupbox)
+        scroll_area_layout.addWidget(ai_settings_groupbox)
 
         self.api_key_line_edit = qtw.QLineEdit()
         self.api_key_line_edit.setText(self.config['api_key'])
@@ -128,7 +142,7 @@ class SettingsWidget(qtw.QWidget):
         # Selenium settings
         selenium_settings_groupbox = qtw.QGroupBox('Selenium Settings')
         selenium_settings_layout = qtw.QFormLayout(selenium_settings_groupbox)
-        layout.addWidget(selenium_settings_groupbox)
+        scroll_area_layout.addWidget(selenium_settings_groupbox)
 
         self.webdriver_path_file_select = FileSelectWidget(
             initial_path=self.config['webdriver_path'], button_text='Select Webdriver Path')
@@ -154,7 +168,8 @@ class SettingsWidget(qtw.QWidget):
         settings = {
             'resume_path': self.resume_path_file_select.get_file_path(),
             'default_cover_letter_path': self.default_cover_letter_path_file_select.get_file_path(),
-            "cover_letter_action": self.cover_letter_action_combo_box.currentData(),
+            'cover_letter_output_dir': self.cover_letter_output_dir_file_select.get_file_path(),
+            'cover_letter_action': self.cover_letter_action_combo_box.currentData(),
             'job_app_db_path': self.job_app_db_file_select.get_file_path(),
             'li_username': self.li_username_line_edit.text(),
             'li_password': self.li_password_line_edit.text(),
@@ -170,9 +185,41 @@ class SettingsWidget(qtw.QWidget):
         }
         return settings
 
+
+    def validate_paths(self, settings: Optional[dict] = None) -> bool:
+        settings = settings or self.get_settings()
+        if isinstance((resume_path := settings.get('resume_path')), Path) and not resume_path.exists():
+            qtw.QMessageBox.critical(
+                self, 'Invalid Resume Path', 'Resume path does not exist.')
+            return False
+        
+        if isinstance((default_cover_letter_path := settings.get('default_cover_letter_path')), Path) and not default_cover_letter_path.exists():
+            qtw.QMessageBox.critical(
+                self, 'Invalid Default Cover Letter Path', 'Default cover letter path does not exist.')
+            return False
+        
+        if isinstance((cover_letter_output_dir := settings.get('cover_letter_output_dir')), Path):
+            if not cover_letter_output_dir.exists():
+                cover_letter_output_dir.mkdir(parents=True)
+            if not cover_letter_output_dir.is_dir():
+                qtw.QMessageBox.critical(
+                    self, 'Invalid Cover Letter Output Directory', 'Cover letter output directory is not a directory.')
+                return False
+        
+        return True
+
+
+    def write_settings(self, settings: Optional[dict] = None) -> None:
+        settings = settings or self.get_settings()
+        for key, value in settings.items():
+            settings[key] = str(value) if isinstance(value, Path) else value
+        with open(self.config_path, 'w') as f:
+            json_dump(settings, f, indent=4)
+
+
     @qtc.pyqtSlot()
     def onUpdatedSettingsClicked(self) -> None:
         settings = self.get_settings()
-        with open(self.config_path, 'w') as f:
-            json_dump(settings, f, indent=4)
-        self.settingsUpdated.emit(settings)
+        if self.validate_paths(settings):            
+            self.write_settings(settings)
+            self.settingsUpdated.emit(settings)

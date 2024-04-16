@@ -156,11 +156,7 @@ class ModelTableWidget(qtw.QWidget):
     def get_filtered_data_list(self, data_list, filters) -> list:
         filtered_data_list = []
         for item in data_list:
-            if isinstance(item, BaseModel):
-                item_dict = item.model_dump()
-                item_dict['company'] = item_dict.pop('company', {}).get('name')
-            else:
-                item_dict = item
+            item_dict = self.transform_item_for_table(item)
 
             if all(filter_text in str(item_dict[key]) for key, filter_text in filters.items()):
                 filtered_data_list.append(item)

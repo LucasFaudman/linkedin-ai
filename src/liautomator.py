@@ -40,17 +40,18 @@ class LinkedInAutomator:
     def __init__(self,
                  li_username: Optional[str] = None,
                  li_password: Optional[str] = None,
-                 resume_path: str | Path = "resume_path.txt",
+                 resume_path: str | Path = 'resume_path.txt',
                  default_cover_letter_path: Optional[str | Path] = None,
+                 cover_letter_output_dir: str | Path = './cover-letters/',
                  cover_letter_action: Literal['skip',
-                                              'default', 'generate'] = "skip",
-                 job_app_db_path: str | Path = "jobs.db",
-                 ai_db_path: str | Path = "ai.db",
+                                              'default', 'generate'] = 'skip',
+                 job_app_db_path: str | Path = 'jobs.db',
+                 ai_db_path: str | Path = 'ai.db',
                  assistant_id=None,
                  thread_id=None,
-                 api_key="OPENAI_API_KEY",
-                 model="gpt-3.5-turbo",
-                 webdriver_path: str = "chromedriver",
+                 api_key='OPENAI_API_KEY',
+                 model='gpt-3.5-turbo',
+                 webdriver_path: str = 'chromedriver',
                  user_agent=None,
                  proxy=None
                  ):
@@ -67,6 +68,10 @@ class LinkedInAutomator:
         self.default_cover_letter_path = default_cover_letter_path if isinstance(
             default_cover_letter_path, str) else str(default_cover_letter_path)
         self.cover_letter_action = cover_letter_action
+
+        # cover_letter_output_dir is handled as a Path object
+        self.cover_letter_output_dir = cover_letter_output_dir if isinstance(
+            cover_letter_output_dir, Path) else Path(cover_letter_output_dir)
 
         # Both job_app_db_path and ai_db_path are handled as Path objects
         self.job_app_db_path = job_app_db_path if isinstance(
@@ -104,13 +109,17 @@ class LinkedInAutomator:
 
         # Initialize the JobAppAI object (and the underlying AI db if a path is provided)
         self.ai = JobAppAI(
-            resume=self.resume,
             job_app_db=self.job_app_db,
             ai_db_path=self.ai_db_path,
             assistant_id=self.assistant_id,
             thread_id=self.thread_id,
             api_key=self.api_key,
-            model=self.model
+            model=self.model,
+            resume=self.resume,
+            cover_letter_output_dir=self.cover_letter_output_dir,
+            cover_letter_start_text="Dear Hiring Manager,",
+            cover_letter_end_text="Sincerely, <Candidate Name>",
+            cover_letter_example_texts=None
         )
 
     def close_dbs(self):
@@ -392,9 +401,14 @@ class LinkedInAutomator:
         # Easy Apply (Determines if job can be applied to directly from LinkedIn)
         if apply_button := soup.find('div', attrs={'class': 'jobs-apply-button--top-card'}):
             job.easy_apply = 'Easy Apply' in apply_button.text or 'Continue' in apply_button.text
+        
+        # Closed job application status
+        elif feedback_message := soup.find('span', attrs={'class': 'artdeco-inline-feedback__message'}):
+            if "No longer accepting applications" in feedback_message.text:
+                job.status = 'closed'                
 
         # Post submission application status (applied, viewed, downloaded, etc.)
-        elif post_apply_content := soup.find('div', attrs={'class': 'post-apply-timeline__content'}):
+        if post_apply_content := soup.find('div', attrs={'class': 'post-apply-timeline__content'}):
             for post_appy_entity in post_apply_content.find_all('li', attrs={'class': 'post-apply-timeline__entity'})[::-1]:
                 activity = post_appy_entity.find(
                     'span', attrs={'class': 'full-width'}).text.strip()
@@ -686,4 +700,5 @@ class LinkedInAutomator:
 
     def generate_cover_letter(self, job: Job) -> Path:
         """Generates a cover letter for the provided job using the AI."""
-        pass  # TODO Add function to generate cover letter to JobAppAI
+        cover_letter_paths = self.ai.write_job_cover_letters(job)
+        return cover_letter_paths[job]

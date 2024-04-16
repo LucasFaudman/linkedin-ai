@@ -12,7 +12,7 @@ class FileSelectWidget(qtw.QWidget):
                  button_text: str = 'Select File',
                  dialog_title: Optional[str] = None,
                  no_selection_text: str = 'No File Selected',
-                 return_as: type = str,
+                 return_as: type = Path,
                  **kwargs
                  ):
         super().__init__(**kwargs)

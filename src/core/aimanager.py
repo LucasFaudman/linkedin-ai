@@ -298,6 +298,20 @@ class OpenAIManager:
 
         return canceled_run
 
+    def save_run_steps(self, run_id, thread_id):
+        print(f"Saving run steps for run {run_id}")
+        run_steps = self.client.beta.threads.runs.steps.list(
+            run_id=run_id,
+            thread_id=thread_id,
+            limit=100, 
+            order="asc"
+        )
+
+        if self.db:
+            self.db.insert_models(*run_steps)
+
+        return run_steps
+
 
     def wait_for_response(self, thread_id, run_id, sleep_interval=5, **kwargs):
         """
@@ -322,9 +336,11 @@ class OpenAIManager:
                 return self.handle_submit_tool_outputs_required(run, sleep_interval, **kwargs)
 
             elif run.status in ("cancelled", 'failed', 'expired'):
+                self.save_run_steps(run_id, thread_id)
                 raise RunStatusError(run.status, run.last_error)
 
             elif run.status == "completed":
+                self.save_run_steps(run_id, thread_id)
                 print(f"Run {run.id} completed")
                 break
 
@@ -426,7 +442,7 @@ class OpenAIManager:
         try:
             messages = self.wait_for_response(
                 thread.id, run.id, sleep_interval, **kwargs)
-
+            
             print(f"Done {ass.id}, {thread.id}, {run.id}")
             return ass, thread, run, messages
 

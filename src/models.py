@@ -28,7 +28,7 @@ class HiringManager(BaseModel):
 class Job(BaseModel):
     id: str
     title: str
-    company: Company
+    company: Optional[Company] = None
     location: Optional[str] = None
     url: Optional[str] = None
     min_salary: Optional[float] = None

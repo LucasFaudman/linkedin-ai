@@ -394,7 +394,8 @@ class MainWindow(qtw.QMainWindow):
         self.li_auto.ai.askingQuestion.connect(self.asking_question)
         self.li_auto.ai.answeredQuestion.connect(self.answered_question)
         self.li_auto.ai.answerUnknown.connect(self.answer_unknown)
-
+        self.li_auto.ai.writingCoverLetter.connect(self.writing_cover_letter)
+        self.li_auto.ai.wroteCoverLetter.connect(self.wrote_cover_letter)
 
     @qtc.pyqtSlot(dict)
     def setup_li_auto(self, settings):
@@ -591,6 +592,14 @@ class MainWindow(qtw.QMainWindow):
     @qtc.pyqtSlot(Question)
     def answer_unknown(self, question):
         self.update_status(f"AI could not answer question: {question.question}")
+
+    @qtc.pyqtSlot(Job)
+    def writing_cover_letter(self, job):
+        self.update_status(f"Writing cover letter for job: {job.title} at {job.company.name}")
+
+    @qtc.pyqtSlot(Job, str)
+    def wrote_cover_letter(self, job, cover_letter_text):
+        self.update_status(f"Wrote cover letter for job: {job.title} at {job.company.name}: {cover_letter_text}")
 
     def quit(self):
         self.teardown_li_auto_thread_if_running()

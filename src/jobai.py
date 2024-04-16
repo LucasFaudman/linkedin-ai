@@ -1,11 +1,11 @@
 from typing import Union, Optional, Dict, Tuple, Callable
 from pathlib import Path
 from datetime import datetime
-
+from docx import Document
 from PyQt5 import QtCore as qtc
 from core.aimanager import OpenAIManager, Assistant, Thread, Run, Message, RunStatusError, sleep, json_loads
 from jobdb import JobAppDB
-from models import Question
+from models import Question, Job
 
 
 class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
@@ -79,7 +79,7 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
             )
 
             if self.db:
-                self.db.update_model(run)            
+                self.db.update_model(run)
 
             print(f"Status: {run.status} Thread id: {thread_id}, run_id: {run_id}")
             self.runStatusUpdated.emit(run)
@@ -154,6 +154,8 @@ class JobAppAI(OpenAIManagerQObject):
     askingQuestion = qtc.pyqtSignal(Question)
     answeredQuestion = qtc.pyqtSignal(Question)
     answerUnknown = qtc.pyqtSignal(Question)
+    writingCoverLetter = qtc.pyqtSignal(Job)
+    wroteCoverLetter = qtc.pyqtSignal(Job, str)
 
     # AI Tool/Function definition for searching job application database for questions
     SEARCH_JOB_DB_FOR_QUESTIONS_TOOL = {
@@ -176,22 +178,33 @@ class JobAppAI(OpenAIManagerQObject):
                 }
     }
 
-    def __init__(self,
-                 resume: str,
+    def __init__(self,                 
                  job_app_db: JobAppDB,
                  ai_db_path: Optional[Path] = Path("ai.db"),
                  assistant_id: Optional[str] = None,
                  thread_id: Optional[str] = None,
                  api_key: str = "OPENAI_API_KEY",
-                 model: str = "gpt-4-turbo-preview"
+                 model: str = "gpt-4-turbo-preview",
+                 resume: str = "",
+                 cover_letter_output_dir: Path = Path("./cover-letters/"),
+                 cover_letter_start_text: str = "Dear Hiring Manager,",
+                 cover_letter_end_text: str = "Sincerely,\n<Candidate Name>",
+                 cover_letter_example_texts: Optional[list[str]] = None
                  ) -> None:
 
-        self.resume = resume
+        
         self.job_app_db = job_app_db
         self.assistant_id = assistant_id
         self.thread_id = thread_id
         tools = {"search_answered_questions_db": (
             self.SEARCH_JOB_DB_FOR_QUESTIONS_TOOL, self.search_answered_questions_db)}
+        
+        self.resume = resume
+        self.cover_letter_output_dir = cover_letter_output_dir
+        self.cover_letter_start_text = cover_letter_start_text
+        self.cover_letter_end_text = cover_letter_end_text
+        self.cover_letter_example_texts = cover_letter_example_texts
+
         super().__init__(api_key=api_key, model=model, tools=tools, db_path=ai_db_path)
 
     def search_answered_questions_db(self, arguments: dict) -> dict[str, str]:
@@ -201,6 +214,10 @@ class JobAppAI(OpenAIManagerQObject):
         tool_output = {
             question.question: question.answer for question in questions if question.answer}
         return tool_output
+
+    def add_resume_to_system_prompt(self, system_prompt: str) -> str:
+        """Add resume to system prompt."""
+        return system_prompt + f"\nResume:\n{self.resume}"        
 
     def answer_job_questions(self, *questions: Question) -> tuple[Question, ...]:
         """
@@ -222,9 +239,9 @@ class JobAppAI(OpenAIManagerQObject):
             "\nIMPORTANT: When asked a question that can be answered with a number, your response MUST be a whole number between 0 and 99, WITHOUT ANY text before or after the number. ",
             "For example, if the question is 'How many years of experience do you have with Python?', and the answer is 6 years, respond with '6'.",
             f"\nThe current date is: {datetime.now().strftime('%Y-%m-%d')}.\n",
-            "\nResume:\n",
-            self.resume,
         ))
+
+        system_prompt = self.add_resume_to_system_prompt(system_prompt)
 
         for question in questions:
             print(f"\n\nAsking: {question.question}")
@@ -243,22 +260,72 @@ class JobAppAI(OpenAIManagerQObject):
             self.thread_id = thread.id
             self.run_id = run.id
 
-            run_steps = self.client.beta.threads.runs.steps.list(
-                run_id=self.run_id,
-                thread_id=self.thread_id,
-                limit=100,
-                order="asc"
-            )
-            if self.db:
-                self.db.insert_models(*run_steps)
-
             answer = messages.data[0].content[0].text.value
             if "ANSWER UNKNOWN" not in answer.upper():
                 question.answer = answer
-                self.job_app_db.update_model(question)
+                self.answeredQuestion.emit(question)
+            else:
                 self.answerUnknown.emit(question)
 
-            print(f"\n Done with: {question.question}\nAnswer: {answer}")
-            self.answeredQuestion.emit(question)
-
+            print(f"\nDone with: {question.question}\nAnswer: {answer}")
+            
         return questions
+
+
+    def write_job_cover_letters(self, *jobs: Job) -> dict[Job, Path]:
+        """
+        Writes job application cover letters using the AI assistant.
+        Creates a .docx in cover_letter_output_dir named: {job.company.name}-{job.id}-cover-letter.docx        
+        Returns a dict of Job:Path pairs
+
+        Emits signals:
+        - writingCoverLetter: when beginning writing a cover letter for a job, emit the job
+        - wroteCoverLetter: when done writing a cover letter for a job, emits the job and cover letter text 
+        """
+
+        system_prompt = ''.join((
+            "Your role is to write cover letters for application as if you were the candidate. ",
+            "You will be provided with a job description and must write a cover letter for the job "
+            "using the information from the candidate's resume and the job description. ",
+            "The cover letter must be tailored to the job description and the candidate's resume. ",
+            "The cover letter should be professional and well-written. ",
+            "The cover letter should highlight the candidate's skills and experiences that are relevant to the job. ",
+            f"IMPORTANT: The cover letter MUST BEGIN WITH: '{self.cover_letter_start_text}'. "
+            f"IMPORTANT: The cover letter MUST END WITH: '{self.cover_letter_end_text}'. ",
+        ))
+
+        system_prompt = self.add_resume_to_system_prompt(system_prompt)
+
+        if self.cover_letter_example_texts:
+            for i, example_cover_letter in enumerate(self.cover_letter_example_texts, start=1):
+                system_prompt += f"\n\nExample Cover Letter {i}:\n{example_cover_letter}"
+
+        cover_letter_paths = {}
+        for job in jobs:
+            print(f"\n\nWriting cover letter for Job ({job.id}): {job.title} at {job.company.name}")
+            self.writingCoverLetter.emit(job)
+            
+            ass, thread, run, messages = self.run_with_assistant(
+                f"Job Description for {job.title} at {job.company.name}:\n{job.description}",
+                ass_id=self.assistant_id,
+                thread_id=self.thread_id,
+                system_prompt=system_prompt,
+                tools_names=["search_answered_questions_db"],
+                sleep_interval=2
+            )
+
+            self.assistant_id = ass.id
+            self.thread_id = thread.id
+            self.run_id = run.id
+
+            cover_letter_text = messages.data[0].content[0].text.value
+            cover_letter_path = self.cover_letter_output_dir / f"{job.company.name}-{job.id}-cover-letter.docx"
+            cover_letter_doc = Document()
+            cover_letter_doc.add_paragraph(cover_letter_text)
+            cover_letter_doc.save(str(cover_letter_path))
+            cover_letter_paths[job] = cover_letter_path
+
+            print(f"\nDone writing cover letter for Job ({job.id}): {job.title} at {job.company.name}")
+            self.wroteCoverLetter.emit(job, cover_letter_text)
+
+        return cover_letter_paths
