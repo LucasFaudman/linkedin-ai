@@ -24,6 +24,7 @@ def thread_safe_dbs(func):
             # Init the databases before calling the function
             instance.init_dbs()
             rval = func(instance, *args, **kwargs)
+            instance.close_dbs()
         except Exception as e:
             print(e)
         finally:
@@ -50,8 +51,8 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
     aiAndDBsInitialized = qtc.pyqtSignal()
     loginReady = qtc.pyqtSignal()
     loginResult = qtc.pyqtSignal(bool)
-    updatingFilterOptions = qtc.pyqtSignal()
     getFilterOptionsResult = qtc.pyqtSignal(dict)
+    getCollectionsResult = qtc.pyqtSignal(dict)
     getJobsFromDBResult = qtc.pyqtSignal(list)
     getQuestionsFromDBResult = qtc.pyqtSignal(list)
     newJob = qtc.pyqtSignal(Job)
@@ -101,9 +102,14 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
     @qtc.pyqtSlot(str)
     def get_filter_options(self, job_title: str):
         """Get filter options for a job search. Emits signals when starting and with the filter options."""
-        self.updatingFilterOptions.emit()
         filters = LinkedInAutomator.get_filter_options(self, job_title)
         self.getFilterOptionsResult.emit(filters)
+
+    @qtc.pyqtSlot()
+    def get_collections(self):
+        """Get collections for a job search. Emits signal with the collections."""
+        collections = LinkedInAutomator.get_collections(self)
+        self.getCollectionsResult.emit(collections)
 
     @thread_safe_dbs
     def get_jobs_from_db(self) -> list[Job]:
@@ -301,11 +307,25 @@ class MainWindow(qtw.QMainWindow):
         # Filter options
         self.search_widget.search_filters_widget.getFilterOptions.connect(
             self.li_auto.get_filter_options)  # Get filters for search term in LinkedInAutomator thread
-        self.li_auto.updatingFilterOptions.connect(
-            self.updating_filter_options)  # Update statusbar when starting task
+        # self.li_auto.gettingFilterOptions.connect(
+            # self.getting_filter_options)  # Update statusbar when starting task
+        self.search_widget.search_filters_widget.getFilterOptions.connect(
+            self.getting_filter_options)  # Update statusbar when starting task 
         self.li_auto.getFilterOptionsResult.connect(
-            self.updated_filter_options)  # Update filter options in search widget
+            self.updated_filter_options) # Update statusbar when done getting filter options
+        self.li_auto.getFilterOptionsResult.connect(
+            self.search_widget.update_filter_options)  # Update filter options in search widget
 
+        # Collections options
+        self.search_widget.search_collections_widget.getCollections.connect(
+            self.li_auto.get_collections) # Get collections in LinkedInAutomator thread
+        self.search_widget.search_collections_widget.getCollections.connect(
+            self.getting_collections) # Update statusbar when starting task
+        self.li_auto.getCollectionsResult.connect(
+            self.updated_collections) # Update statusbar when done getting collections
+        self.li_auto.getCollectionsResult.connect(
+            self.search_widget.search_collections_widget.update_collections) # Update collections combobox in search widget
+        
         # Search for jobs
         # Begin searching in the LinkedInAutomator thread
         self.search_widget.newSearch.connect(self.li_auto.search_jobs)
@@ -458,6 +478,7 @@ class MainWindow(qtw.QMainWindow):
         self.li_auto.get_jobs_from_db()
         self.li_auto.get_questions_from_db()
         self.li_auto.get_filter_options('Python Automation')
+        self.li_auto.get_collections()
         
 
     @qtc.pyqtSlot(str)
@@ -465,19 +486,26 @@ class MainWindow(qtw.QMainWindow):
         self.statusBar().showMessage(message)
 
     # LinkedInAutomator Slots
-    @qtc.pyqtSlot()
-    def updating_filter_options(self):
-        self.update_status('Updating Filter Options...')
+    @qtc.pyqtSlot(str)
+    def getting_filter_options(self, search_term: str):
+        self.update_status(f'Getting Filter Options for {search_term}...')
 
     @qtc.pyqtSlot(dict)
     def updated_filter_options(self, filters):
-        self.update_status('Updated Filter Options.')
-        self.search_widget.search_filters_widget.update_options(filters)
+        self.update_status(f'Updated Filter Options: {" | ".join(filters)}')
+
+    @qtc.pyqtSlot()
+    def getting_collections(self):
+        self.update_status('Getting Collections...')
+
+    @qtc.pyqtSlot(dict)
+    def updated_collections(self, collections):
+        self.update_status(f'Updated Collections: {" | ".join(collections)}')
 
     @qtc.pyqtSlot(dict)
     def new_search(self, filters):
         self.update_status(
-            f"Searching for {filters['search_term']} jobs in {filters['location']}")
+            f"Searching for {filters.get('search_term') or filters.get('collection')} jobs in {filters.get('location') or 'your LinkedIn recommendations'}")
 
     @qtc.pyqtSlot(Job)
     def new_job(self, job):
@@ -492,7 +520,7 @@ class MainWindow(qtw.QMainWindow):
     @qtc.pyqtSlot(Job)
     def updated_job(self, job):
         self.update_status(
-            f"Updated Job ({job.id}): {job.title} at {job.company.name}")
+            f"Updated Job ({job.id}): {job.title} at {job.company.name}. Status: {job.status}")
 
     @qtc.pyqtSlot(list)
     def search_complete(self, jobs):

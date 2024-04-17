@@ -124,10 +124,18 @@ class LinkedInAutomator:
 
     def close_dbs(self):
         """Closes the JobAppDB and JobAppAI underlying db connections."""
-        if self.job_app_db:
-            self.job_app_db.close_connection()
-        if self.ai and self.ai.db:
-            self.ai.db.close_connection()
+        try:
+            if self.job_app_db:
+                self.job_app_db.close_connection()
+        except Exception as e:
+            print(f"Failed to close JobAppDB connection. Error: {e}")
+        
+        try: 
+            if self.ai and self.ai.db:
+                self.ai.db.close_connection()
+                self.ai.job_app_db.close_connection()
+        except Exception as e:
+            print(f"Failed to close JobAppAI db connection. Error: {e}")
 
     def init_scraper(self):
         """Initializes the SouperScraper object for scraping LinkedIn using the provided WebDriver settings."""
@@ -164,9 +172,56 @@ class LinkedInAutomator:
             return False
         return True
 
+    def get_filter_options(self, search_term: str):
+        """Gets the filter options available for a LinkedIn job search."""
+        self.scraper.goto(
+            f"https://www.linkedin.com/jobs/search/?keywords={search_term}", sleep_secs=3)
+        self.click_button_with_aria_label(
+            'Show all filters. Clicking this button displays all available filter options.')
+        self.scraper.wait_for_visibility_of_element_located_by_id(
+            "reusable-search-advanced-filters-right-panel")
+
+        filters = {}
+        for filter_container in self.scraper.soup.find_all('li', attrs={'class': 'search-reusables__secondary-filters-filter'}):
+            filter_name = filter_container.find('h3').text.strip()
+            if filter_container.find('div', attrs={'class': 'search-reusables__advanced-filters-binary-toggle'}):
+                filter_type = "toggle"
+
+            choices = []
+            for choice in filter_container.find_all('li', attrs={'class': 'search-reusables__filter-value-item'}):
+                choice_text = choice.text.strip().split('\n')[0]
+                if choice_text.startswith("Add a"):
+                    continue
+                choices.append(choice_text)
+                if input_elm := choice.find('input'):
+                    filter_type = input_elm.attrs['type']
+
+            filters[filter_name] = (filter_type, choices)
+
+        self.click_button_with_aria_label('Dismiss')
+        return filters
+
+
+    def get_collections(self):
+        """Gets the available LinkedIn job collections."""
+        self.scraper.goto("https://www.linkedin.com/jobs/collections/", sleep_secs=2)
+        collections = {}
+        for collection_elm in self.scraper.soup.find_all('li', attrs={'class': 'jobs-search-discovery-tabs__listitem'}):
+            collection_name = collection_elm.text.strip()
+            collection_url = collection_elm.find('a').attrs['href']
+            collection_tag = collection_url.split('/')[-1].split('?')[0].strip()
+            collections[collection_name] = collection_tag
+        return collections
+    
+
     def get_filtered_search_url(self, filters: dict) -> str:
         """Generates a LinkedIn job search URL with the provided filters."""
-        base_url = "https://www.linkedin.com/jobs/search/?"
+        base_url = "https://www.linkedin.com/jobs/"
+        if collection := filters.pop('collection', None):
+            base_url += f'collections/{collection}/?'
+        else:
+            base_url += "search/?"
+
         filter_names_map = {
             "search_term": "keywords",
             "location": "location",
@@ -210,20 +265,26 @@ class LinkedInAutomator:
 
                 params[filter_names_map[filter_name]] = filter_value
 
-        params.update({
-            "origin": "JOB_SEARCH_PAGE_JOB_FILTER",
-            "refresh": "true",
-            "spellCorrectionEnabled": "true"
-        })
+
+        if collection:
+            params['discover'] = 'recommended'
+            params['discoveryOrigin'] = 'PUBLIC_COMMS'
+        else:
+            params['origin'] = 'JOB_SEARCH_PAGE_JOB_FILTER'
+            params['refresh'] = 'true'
+            params['spellCorrectionEnabled'] = 'true'
 
         search_url = base_url + \
-            "&".join(f"{key}={value}" for key, value in params.items())
+            '&'.join(f'{key}={value}' for key, value in params.items())
         return search_url
 
+        
     def iter_jobs(self, filters: dict) -> Iterator[Job]:
         """Iterates over the jobs on the LinkedIn search page with the provided filters."""
-        # Navigate to the LinkedIn job search page with the provided filters
-        self.scraper.goto(self.get_filtered_search_url(filters), sleep_secs=3)
+        # Navigate to the LinkedIn job search page with the provided filters or collection
+        if filters:
+            search_url = self.get_filtered_search_url(filters)
+            self.scraper.goto(search_url, sleep_secs=3)
         
         more_jobs = True
         while more_jobs:
@@ -291,7 +352,7 @@ class LinkedInAutomator:
         """Updates the Job object with details from the LinkedIn job page."""
         # Add the job to the db if it doesn't exist and navigate to the job page
         self.job_app_db.insert_model(job)
-        self.goto_job(job, sleep_secs=3)
+        self.goto_job(job, sleep_secs=2)
 
         # BeautifulSoup4 is used to parse the static HTML of the job page
         soup = self.scraper.soup
@@ -300,13 +361,17 @@ class LinkedInAutomator:
         if ((details_container := soup.find('div', attrs={'class': 'job-details-jobs-unified-top-card__primary-description-container'}))
                 and "·" in details_container.text):
 
-            company_name, location, date_posted, num_applicants = map(
-                str.strip, details_container.text.split("·"))
+            details = [detail.strip() for detail in details_container.text.split("·")]
+            company_name, location, date_posted = details[:3]
             company_dict = {"name": company_name}
 
             job.location = location
             job.date_posted = parse_relative_date(date_posted)
-            job.num_applicants = num_applicants
+            if len(details) > 3:
+                num_applicants = details[3]
+                if num_applicants.endswith("applicants"):
+                   job.num_applicants = num_applicants
+            
 
             if a_elm := details_container.find('a', attrs={'href': True}):
                 company_dict["url"] = a_elm.attrs['href']
@@ -405,7 +470,7 @@ class LinkedInAutomator:
         # Closed job application status
         elif feedback_message := soup.find('span', attrs={'class': 'artdeco-inline-feedback__message'}):
             if "No longer accepting applications" in feedback_message.text:
-                job.status = 'closed'                
+                job.status = 'closed'
 
         # Post submission application status (applied, viewed, downloaded, etc.)
         if post_apply_content := soup.find('div', attrs={'class': 'post-apply-timeline__content'}):
@@ -420,7 +485,7 @@ class LinkedInAutomator:
                 elif activity == 'Application viewed':
                     job.status = 'viewed'
                     break
-                elif activity == 'Application submitted':
+                elif activity == 'Application submitted' and job.status not in ('applied', 'downloaded', 'viewed'):
                     job.status = 'applied'
                 print(activity, time)
 
@@ -625,34 +690,7 @@ class LinkedInAutomator:
 
         return question_count
 
-    def get_filter_options(self, search_term: str):
-        """Gets the filter options available for a LinkedIn job search."""
-        self.scraper.goto(
-            f"https://www.linkedin.com/jobs/search/?keywords={search_term}", sleep_secs=3)
-        self.click_button_with_aria_label(
-            'Show all filters. Clicking this button displays all available filter options.')
-        self.scraper.wait_for_visibility_of_element_located_by_id(
-            "reusable-search-advanced-filters-right-panel")
 
-        filters = {}
-        for filter_container in self.scraper.soup.find_all('li', attrs={'class': 'search-reusables__secondary-filters-filter'}):
-            filter_name = filter_container.find('h3').text.strip()
-            if filter_container.find('div', attrs={'class': 'search-reusables__advanced-filters-binary-toggle'}):
-                filter_type = "toggle"
-
-            choices = []
-            for choice in filter_container.find_all('li', attrs={'class': 'search-reusables__filter-value-item'}):
-                choice_text = choice.text.strip().split('\n')[0]
-                if choice_text.startswith("Add a"):
-                    continue
-                choices.append(choice_text)
-                if input_elm := choice.find('input'):
-                    filter_type = input_elm.attrs['type']
-
-            filters[filter_name] = (filter_type, choices)
-
-        self.click_button_with_aria_label('Dismiss')
-        return filters
 
     def _try_func_on_jobs(self, jobs_iter: Iterable[Job], func: Callable[[Job], Job], new_tab=False, close_tab_after=False) -> Iterator[Job]:
         """Tries to preform a function to each job in the provided iterable and yields the job if successful."""
