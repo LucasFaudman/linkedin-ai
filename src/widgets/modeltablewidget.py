@@ -14,8 +14,7 @@ class ClickableTableWidget(qtw.QTableWidget):
         if items:
             self.itemsClicked.emit(items)
             # dict.fromkeys preserves order of rows with no duplicates
-            self.rowsClicked.emit(
-                list(dict.fromkeys(item.row() for item in items)))
+            self.rowsClicked.emit(list(dict.fromkeys(item.row() for item in items)))
         super().mousePressEvent(event)
 
 
@@ -23,11 +22,12 @@ class ModelTableWidget(qtw.QWidget):
     itemsClicked = qtc.pyqtSignal(list)
     rowsClicked = qtc.pyqtSignal(list)
 
-    def __init__(self,
-                 data_list: list,
-                 initial_filters: Optional[dict] = None,
-                 resize_columns: Optional[list | bool] = None
-                 ) -> None:
+    def __init__(
+        self,
+        data_list: list,
+        initial_filters: Optional[dict] = None,
+        resize_columns: Optional[list | bool] = None,
+    ) -> None:
         super().__init__()
 
         self.data_list = data_list
@@ -36,7 +36,7 @@ class ModelTableWidget(qtw.QWidget):
         self.resize_columns = resize_columns
 
         layout = qtw.QVBoxLayout(self)
-        keys_to_show_label = qtw.QLabel('Select Columns to Display:')
+        keys_to_show_label = qtw.QLabel("Select Columns to Display:")
         self.keys_to_show = CheckableComboBox()
         self.keys_to_show.dataChanged.connect(self.onKeysToShowChanged)
         layout.addWidget(keys_to_show_label)
@@ -53,13 +53,13 @@ class ModelTableWidget(qtw.QWidget):
         scroll_area.setWidget(self.table_widget)
 
         buttons_layout = qtw.QHBoxLayout()
-        select_all_button = qtw.QPushButton('Select All')
+        select_all_button = qtw.QPushButton("Select All")
         select_all_button.clicked.connect(self.select_all)
         buttons_layout.addWidget(select_all_button)
-        unselect_all_button = qtw.QPushButton('Unselect All')
+        unselect_all_button = qtw.QPushButton("Unselect All")
         unselect_all_button.clicked.connect(self.unselect_all)
         buttons_layout.addWidget(unselect_all_button)
-        remove_selected = qtw.QPushButton('Remove Selected Items')
+        remove_selected = qtw.QPushButton("Remove Selected Items")
         remove_selected.clicked.connect(self.remove_selected)
         buttons_layout.addWidget(remove_selected)
         layout.addLayout(buttons_layout)
@@ -94,7 +94,8 @@ class ModelTableWidget(qtw.QWidget):
         # self.filters = self.get_filters_from_line_edits()
         self.line_edits = {}
         self.filtered_data_list = self.get_filtered_data_list(
-            self.data_list, self.filters)
+            self.data_list, self.filters
+        )
 
         if not self.keys_to_show_initialized:
             self.reset_keys_to_show()
@@ -104,13 +105,15 @@ class ModelTableWidget(qtw.QWidget):
 
         # Set row and column count
         self.table_widget.setRowCount(
-            len(self.filtered_data_list) + 1)  # Add one for filter row
+            len(self.filtered_data_list) + 1
+        )  # Add one for filter row
         self.table_widget.setColumnCount(len(keys))
 
         # Set headers
         self.table_widget.setHorizontalHeaderLabels(keys)
-        vertical_headers = [f"{len(self.filtered_data_list)}\ntotal"] + [str(i)
-                                                                         for i in range(1, len(self.filtered_data_list) + 1)]
+        vertical_headers = [f"{len(self.filtered_data_list)}\ntotal"] + [
+            str(i) for i in range(1, len(self.filtered_data_list) + 1)
+        ]
         self.table_widget.setVerticalHeaderLabels(vertical_headers)
 
         for col, key in enumerate(keys):
@@ -131,7 +134,10 @@ class ModelTableWidget(qtw.QWidget):
                 item_widget = qtw.QTableWidgetItem(str(item[key]))
                 if col == 0:  # Add checkbox to the first column
                     item_widget.setFlags(
-                        item_widget.flags() | qtc.Qt.ItemIsEnabled | qtc.Qt.ItemIsUserCheckable)
+                        item_widget.flags()
+                        | qtc.Qt.ItemIsEnabled
+                        | qtc.Qt.ItemIsUserCheckable
+                    )
                     item_widget.setCheckState(qtc.Qt.Unchecked)
 
                 self.table_widget.setItem(row, col, item_widget)
@@ -158,7 +164,10 @@ class ModelTableWidget(qtw.QWidget):
         for item in data_list:
             item_dict = self.transform_item_for_table(item)
 
-            if all(filter_text in str(item_dict[key]) for key, filter_text in filters.items()):
+            if all(
+                filter_text in str(item_dict[key])
+                for key, filter_text in filters.items()
+            ):
                 filtered_data_list.append(item)
         return filtered_data_list
 
@@ -229,8 +238,9 @@ class ModelTableWidget(qtw.QWidget):
     def get_selected_rows(self) -> list:
         selected_rows = []
         for row in range(1, self.table_widget.rowCount()):
-            if ((table_item := self.table_widget.item(row, 0))
-                    and table_item.checkState() == qtc.Qt.Checked):  # Check if checkbox is checked
+            if (
+                table_item := self.table_widget.item(row, 0)
+            ) and table_item.checkState() == qtc.Qt.Checked:  # Check if checkbox is checked
                 # Subtract 1 to account for filter row
                 selected_rows.append(self.filtered_data_list[row - 1])
         return selected_rows
@@ -249,17 +259,17 @@ class ModelTableWidget(qtw.QWidget):
         self.remove_items(self.get_selected_rows())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     app = qtw.QApplication(sys.argv)
     data = [
-        {'name': 'Alice', 'age': 25},
-        {'name': 'Bob', 'age': 30},
-        {'name': 'Charlie', 'age': 35},
-
+        {"name": "Alice", "age": 25},
+        {"name": "Bob", "age": 30},
+        {"name": "Charlie", "age": 35},
     ]
 
     widget = ModelTableWidget(data)
     widget.show()
-    widget.append({'name': 'David', 'age': 40})
+    widget.append({"name": "David", "age": 40})
     sys.exit(app.exec_())

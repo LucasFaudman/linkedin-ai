@@ -11,7 +11,12 @@ from selenium.webdriver.common.proxy import Proxy
 from selenium.webdriver.common.alert import Alert
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import WebDriverException, NoSuchElementException, StaleElementReferenceException, TimeoutException
+from selenium.common.exceptions import (
+    WebDriverException,
+    NoSuchElementException,
+    StaleElementReferenceException,
+    TimeoutException,
+)
 from selenium.webdriver.remote.webelement import WebElement
 
 from time import sleep
@@ -19,93 +24,106 @@ from functools import partial
 from typing import Optional, Union, Literal, Type, Iterable, Callable
 from pathlib import Path
 
-WebDriverType = Literal['chrome', 'edge', 'firefox',
-                        'ie', 'safari', 'webkitgtk', 'wpewebkit']
-SoupParser = Literal['html.parser', 'lxml', 'lxml-xml', 'xml', 'html5lib']
+WebDriverType = Literal[
+    "chrome", "edge", "firefox", "ie", "safari", "webkitgtk", "wpewebkit"
+]
+SoupParser = Literal["html.parser", "lxml", "lxml-xml", "xml", "html5lib"]
 
 
-def import_webdriver(webdriver_type: WebDriverType) -> tuple[Type, Type, Optional[Type]]:
+def import_webdriver(
+    webdriver_type: WebDriverType,
+) -> tuple[Type, Type, Optional[Type]]:
     """Imports and returns Selenium WebDriver class, Service class, and Options class for webdriver_type"""
 
     webdriver_modules = {
-        'chrome': {
-            'Service': 'selenium.webdriver.chrome.service',
-            'Options': 'selenium.webdriver.chrome.options',
-            'WebDriver': 'selenium.webdriver.chrome.webdriver'
+        "chrome": {
+            "Service": "selenium.webdriver.chrome.service",
+            "Options": "selenium.webdriver.chrome.options",
+            "WebDriver": "selenium.webdriver.chrome.webdriver",
         },
-        'edge': {
-            'Service': 'selenium.webdriver.edge.service',
-            'Options': 'selenium.webdriver.edge.options',
-            'WebDriver': 'selenium.webdriver.edge.webdriver'
+        "edge": {
+            "Service": "selenium.webdriver.edge.service",
+            "Options": "selenium.webdriver.edge.options",
+            "WebDriver": "selenium.webdriver.edge.webdriver",
         },
-        'firefox': {
-            'Service': 'selenium.webdriver.firefox.service',
-            'Options': 'selenium.webdriver.firefox.options',
-            'WebDriver': 'selenium.webdriver.firefox.webdriver'
+        "firefox": {
+            "Service": "selenium.webdriver.firefox.service",
+            "Options": "selenium.webdriver.firefox.options",
+            "WebDriver": "selenium.webdriver.firefox.webdriver",
         },
-        'ie': {
-            'Service': 'selenium.webdriver.ie.service',
-            'Options': 'selenium.webdriver.ie.options',
-            'WebDriver': 'selenium.webdriver.ie.webdriver'
+        "ie": {
+            "Service": "selenium.webdriver.ie.service",
+            "Options": "selenium.webdriver.ie.options",
+            "WebDriver": "selenium.webdriver.ie.webdriver",
         },
-        'safari': {
-            'Service': 'selenium.webdriver.safari.service',
-            'WebDriver': 'selenium.webdriver.safari.webdriver'
+        "safari": {
+            "Service": "selenium.webdriver.safari.service",
+            "WebDriver": "selenium.webdriver.safari.webdriver",
         },
-        'webkitgtk': {
-            'Service': 'selenium.webdriver.webkitgtk.service',
-            'Options': 'selenium.webdriver.webkitgtk.options',
-            'WebDriver': 'selenium.webdriver.webkitgtk.webdriver'
+        "webkitgtk": {
+            "Service": "selenium.webdriver.webkitgtk.service",
+            "Options": "selenium.webdriver.webkitgtk.options",
+            "WebDriver": "selenium.webdriver.webkitgtk.webdriver",
         },
-        'wpewebkit': {
-            'Service': 'selenium.webdriver.wpewebkit.service',
-            'Options': 'selenium.webdriver.wpewebkit.options',
-            'WebDriver': 'selenium.webdriver.wpewebkit.webdriver'
-        }
+        "wpewebkit": {
+            "Service": "selenium.webdriver.wpewebkit.service",
+            "Options": "selenium.webdriver.wpewebkit.options",
+            "WebDriver": "selenium.webdriver.wpewebkit.webdriver",
+        },
     }
 
     if webdriver_type in webdriver_modules:
         module = webdriver_modules[webdriver_type]
         from importlib import import_module
+
         return (
-            import_module(module['WebDriver']).WebDriver,
-            import_module(module['Service']).Service,
-            import_module(module['Options']
-                          ).Options if 'Options' in module else None
+            import_module(module["WebDriver"]).WebDriver,
+            import_module(module["Service"]).Service,
+            import_module(module["Options"]).Options if "Options" in module else None,
         )
     else:
         raise ValueError(f"Unsupported webdriver type: {webdriver_type}")
 
 
 class SouperScraper:
-    def __init__(self,
-                 soup_parser: SoupParser = 'html.parser',
-                 executable_path: Union[str, Path] = './chromedriver',
-                 selenium_webdriver_type: WebDriverType = "chrome",
-                 selenium_service_kwargs: Optional[dict] = None,
-                 selenium_options_args: Optional[Iterable[str]] = None,
-                 selenium_webdriver_cls_override: Optional[Type] = None,
-                 selenium_service_cls_override: Optional[Type] = None,
-                 selenium_options_cls_override: Optional[Type] = None,
-                 keep_alive: bool = True,
-                 user_agent: Optional[str] = None,
-                 proxy: Optional[str] = None,
-                 ) -> None:
-
+    def __init__(
+        self,
+        soup_parser: SoupParser = "html.parser",
+        executable_path: Union[str, Path] = "./chromedriver",
+        selenium_webdriver_type: WebDriverType = "chrome",
+        selenium_service_kwargs: Optional[dict] = None,
+        selenium_options_args: Optional[Iterable[str]] = None,
+        selenium_webdriver_cls_override: Optional[Type] = None,
+        selenium_service_cls_override: Optional[Type] = None,
+        selenium_options_cls_override: Optional[Type] = None,
+        keep_alive: bool = True,
+        user_agent: Optional[str] = None,
+        proxy: Optional[str] = None,
+    ) -> None:
         # Check if executable_path exists and add it to the Selenium Service kwargs
-        executable_path = Path(executable_path) if isinstance(
-            executable_path, str) else executable_path
+        executable_path = (
+            Path(executable_path)
+            if isinstance(executable_path, str)
+            else executable_path
+        )
         if not executable_path.exists():
             raise FileNotFoundError(
-                f"Executable path {executable_path} does not exist. Use souperscraper.get_chromedriver() to download chromedriver.")
+                f"Executable path {executable_path} does not exist. Use souperscraper.get_chromedriver() to download chromedriver."
+            )
 
         selenium_service_kwargs = selenium_service_kwargs or {}
         if executable_path and "executable_path" not in selenium_service_kwargs:
             selenium_service_kwargs["executable_path"] = str(executable_path)
 
         # Import Selenium WebDriver class, Service class, and Options class for webdriver_type or use the override classes
-        selenium_webdriver_cls, selenium_service_cls, selenium_options_cls = import_webdriver(selenium_webdriver_type)
-        selenium_webdriver_cls = selenium_webdriver_cls_override or selenium_webdriver_cls
+        (
+            selenium_webdriver_cls,
+            selenium_service_cls,
+            selenium_options_cls,
+        ) = import_webdriver(selenium_webdriver_type)
+        selenium_webdriver_cls = (
+            selenium_webdriver_cls_override or selenium_webdriver_cls
+        )
         selenium_service_cls = selenium_service_cls_override or selenium_service_cls
         selenium_options_cls = selenium_options_cls_override or selenium_options_cls
 
@@ -122,8 +140,7 @@ class SouperScraper:
 
             # Add user_agent to Selenium Options object
             if user_agent:
-                self.selenium_options.add_argument(
-                    f'--user-agent="{user_agent}"')
+                self.selenium_options.add_argument(f'--user-agent="{user_agent}"')
 
             # Add proxy to Selenium Options object
             if proxy:
@@ -131,7 +148,10 @@ class SouperScraper:
 
         # Create Selenium WebDriver object from Service and Options objects
         self.webdriver = selenium_webdriver_cls(
-            service=self.selenium_service, options=self.selenium_options, keep_alive=keep_alive)
+            service=self.selenium_service,
+            options=self.selenium_options,
+            keep_alive=keep_alive,
+        )
 
         # Save for later to use when calling SoupScraper.soup
         self.soup_parser = soup_parser
@@ -140,7 +160,7 @@ class SouperScraper:
 
     def __del__(self):
         """Quit webdriver when SoupScraper object is deleted or garbage collected"""
-        if hasattr(self, 'webdriver'):
+        if hasattr(self, "webdriver"):
             self.webdriver.quit()
 
     def __getattr__(self, attr):
@@ -149,14 +169,16 @@ class SouperScraper:
             return super().__getattribute__(attr)
 
         # Check if attribute exists in webdriver object
-        if (webdriver := super().__getattribute__("webdriver")) and attr in dir(webdriver):
+        if (webdriver := super().__getattribute__("webdriver")) and attr in dir(
+            webdriver
+        ):
             return getattr(webdriver, attr)
 
         # Split attribute by '_' to check for 'soup', 'by', 'wait', etc.
-        split_attr = attr.split('_')
+        split_attr = attr.split("_")
 
         # If the attr starts with soup, return the attribute from self.soup
-        if 'soup' == split_attr[0]:
+        if "soup" == split_attr[0]:
             return getattr(super().__getattribute__("soup"), "_".join(split_attr[1:]))
 
         # Attempt to find locator and expected_condition in split_attr
@@ -168,15 +190,16 @@ class SouperScraper:
         expected_condition = None
         if "by" in split_attr:
             by_index = split_attr.index("by")
-            locator = " ".join(split_attr[by_index + 1:])
+            locator = " ".join(split_attr[by_index + 1 :])
             split_attr = split_attr[:by_index]
 
         if "wait" in split_attr:
             wait_index = split_attr.index("wait")
             offset = 3 if "not" in split_attr else 2
             expected_condition = getattr(
-                EC, "_".join(split_attr[wait_index + offset:]))
-            split_attr = split_attr[:wait_index + offset]
+                EC, "_".join(split_attr[wait_index + offset :])
+            )
+            split_attr = split_attr[: wait_index + offset]
 
         attr = "_".join(split_attr)
 
@@ -212,7 +235,9 @@ class SouperScraper:
         """Returns webdriver.window_handles"""
         return self.webdriver.window_handles
 
-    def _new_window_handle(self, window_type='window', url=None, sleep_secs=None) -> None:
+    def _new_window_handle(
+        self, window_type="window", url=None, sleep_secs=None
+    ) -> None:
         self.webdriver.switch_to.new_window(window_type)
         if url:
             self.goto(url, sleep_secs)
@@ -252,7 +277,9 @@ class SouperScraper:
                 return window_handle
         return None
 
-    def switch_to_window(self, index=None, title=None, url=None, window_handle=None) -> Optional[str]:
+    def switch_to_window(
+        self, index=None, title=None, url=None, window_handle=None
+    ) -> Optional[str]:
         if index:
             window_handle = self._get_window_handle_by_index(index)
         elif title:
@@ -264,15 +291,17 @@ class SouperScraper:
             self._switch_to_window_handle(window_handle)
         return window_handle
 
-    def switch_to_tab(self, index=None, title=None, url=None, window_handle=None) -> Optional[str]:
+    def switch_to_tab(
+        self, index=None, title=None, url=None, window_handle=None
+    ) -> Optional[str]:
         return self.switch_to_window(index, title, url, window_handle)
 
     def new_tab(self, url=None, sleep_secs=None) -> str:
-        self._new_window_handle('tab', url, sleep_secs)
+        self._new_window_handle("tab", url, sleep_secs)
         return self._get_all_window_handles()[-1]
 
     def new_window(self, url=None, sleep_secs=None) -> str:
-        self._new_window_handle('window', url, sleep_secs)
+        self._new_window_handle("window", url, sleep_secs)
         return self._get_all_window_handles()[-1]
 
     def goto(self, url, sleep_secs=None) -> str:
@@ -330,11 +359,19 @@ class SouperScraper:
 
     # GET WRAPPED WEBDRIVER METHODS (ActionChains, ActionBuilder, Alert, WebDriverWait)
 
-    def get_action_chains(self, duration: int = 250, devices: Optional[list] = None) -> ActionChains:
+    def get_action_chains(
+        self, duration: int = 250, devices: Optional[list] = None
+    ) -> ActionChains:
         """Returns ActionChains object from self.webdriver with duration and devices"""
         return ActionChains(self.webdriver, duration, devices)
 
-    def get_action_builder(self, mouse: Optional[PointerInput] = None, wheel: Optional[WheelInput] = None, keyboard: Optional[KeyInput] = None, duration: int = 250) -> ActionBuilder:
+    def get_action_builder(
+        self,
+        mouse: Optional[PointerInput] = None,
+        wheel: Optional[WheelInput] = None,
+        keyboard: Optional[KeyInput] = None,
+        duration: int = 250,
+    ) -> ActionBuilder:
         """Returns ActionBuilder object from self.webdriver with mouse, wheel, keyboard, and duration"""
         return ActionBuilder(self.webdriver, mouse, wheel, keyboard, duration)
 
@@ -344,45 +381,116 @@ class SouperScraper:
 
     def get_wait(self, timeout, poll_frequency, ignored_exceptions) -> WebDriverWait:
         """Returns WebDriverWait object from self.webdriver with timeout, poll_frequency, and ignored_exceptions"""
-        return WebDriverWait(self.webdriver, timeout, poll_frequency, ignored_exceptions)
+        return WebDriverWait(
+            self.webdriver, timeout, poll_frequency, ignored_exceptions
+        )
 
-    def _wait(self, method, *method_args, timeout=3.0, poll_frequency=0.5, ignored_exceptions=None, until=True) -> Union[WebElement, bool, None]:
+    def _wait(
+        self,
+        method,
+        *method_args,
+        timeout=3.0,
+        poll_frequency=0.5,
+        ignored_exceptions=None,
+        until=True,
+    ) -> Union[WebElement, bool, None]:
         """Wait for method(*method_args) with WebDriverWait"""
 
         wait = self.get_wait(timeout, poll_frequency, ignored_exceptions)
         try:
             if until:
-                return wait.until(method(method_args)) if len(method_args) > 1 else wait.until(method(*method_args))
+                return (
+                    wait.until(method(method_args))
+                    if len(method_args) > 1
+                    else wait.until(method(*method_args))
+                )
             else:
-                return wait.until_not(method(method_args)) if len(method_args) > 1 else wait.until_not(method(*method_args))
+                return (
+                    wait.until_not(method(method_args))
+                    if len(method_args) > 1
+                    else wait.until_not(method(*method_args))
+                )
         except TimeoutException as e:
             print(e)
             return None
 
     # WAIT FOR ELEMENT METHODS -> element(s)
 
-    def wait_until(self, expected_condition: Callable, *expected_condition_args, timeout=3.0, poll_frequency=0.5, ignored_exceptions=None):
+    def wait_until(
+        self,
+        expected_condition: Callable,
+        *expected_condition_args,
+        timeout=3.0,
+        poll_frequency=0.5,
+        ignored_exceptions=None,
+    ):
         """Wait for element with expected_condition(locator, locator_value) or return None if timeout"""
-        return self._wait(expected_condition, *expected_condition_args, timeout=timeout, poll_frequency=poll_frequency, ignored_exceptions=ignored_exceptions)
+        return self._wait(
+            expected_condition,
+            *expected_condition_args,
+            timeout=timeout,
+            poll_frequency=poll_frequency,
+            ignored_exceptions=ignored_exceptions,
+        )
 
-    def wait_until_not(self, expected_condition: Callable, *expected_condition_args, timeout=3.0, poll_frequency=0.5, ignored_exceptions=None):
+    def wait_until_not(
+        self,
+        expected_condition: Callable,
+        *expected_condition_args,
+        timeout=3.0,
+        poll_frequency=0.5,
+        ignored_exceptions=None,
+    ):
         """Wait for element with expected_condition(locator, locator_value) or return None if timeout"""
-        return self._wait(expected_condition, *expected_condition_args, timeout=timeout, poll_frequency=poll_frequency, ignored_exceptions=ignored_exceptions, until=False)
+        return self._wait(
+            expected_condition,
+            *expected_condition_args,
+            timeout=timeout,
+            poll_frequency=poll_frequency,
+            ignored_exceptions=ignored_exceptions,
+            until=False,
+        )
 
-    def wait_for(self, expected_condition: Callable, *expected_condition_args, timeout=3.0, poll_frequency=0.5, ignored_exceptions=None):
+    def wait_for(
+        self,
+        expected_condition: Callable,
+        *expected_condition_args,
+        timeout=3.0,
+        poll_frequency=0.5,
+        ignored_exceptions=None,
+    ):
         """Wait for element with expected_condition(locator, locator_value) or return None if timeout"""
-        return self._wait(expected_condition, *expected_condition_args, timeout=timeout, poll_frequency=poll_frequency, ignored_exceptions=ignored_exceptions)
+        return self._wait(
+            expected_condition,
+            *expected_condition_args,
+            timeout=timeout,
+            poll_frequency=poll_frequency,
+            ignored_exceptions=ignored_exceptions,
+        )
 
-    def wait_for_not(self, expected_condition: Callable, *expected_condition_args, timeout=3.0, poll_frequency=0.5, ignored_exceptions=None):
+    def wait_for_not(
+        self,
+        expected_condition: Callable,
+        *expected_condition_args,
+        timeout=3.0,
+        poll_frequency=0.5,
+        ignored_exceptions=None,
+    ):
         """Wait for element with expected_condition(locator, locator_value) or return None if timeout"""
-        return self._wait(expected_condition, *expected_condition_args, timeout=timeout, poll_frequency=poll_frequency, ignored_exceptions=ignored_exceptions, until=False)
+        return self._wait(
+            expected_condition,
+            *expected_condition_args,
+            timeout=timeout,
+            poll_frequency=poll_frequency,
+            ignored_exceptions=ignored_exceptions,
+            until=False,
+        )
 
     # SCROLL TO ELEMENT METHODS
 
     def scroll_to(self, element: WebElement) -> WebElement:
         """Scroll to element with element.location_once_scrolled_into_view"""
-        self.webdriver.execute_script(
-            "arguments[0].scrollIntoView(true);", element)
+        self.webdriver.execute_script("arguments[0].scrollIntoView(true);", element)
         return element
 
     def scroll_to_element(self, locator: str, locator_value: str) -> WebElement:
@@ -401,9 +509,16 @@ class SouperScraper:
         """Find elements by text with xpath"""
         return self.find_elements_by_xpath(f"//*[text()='{text}']")
 
-    def wait_for_element_by_text(self, text: str, timeout=3.0, poll_frequency=0.5, ignored_exceptions=None) -> WebElement:
+    def wait_for_element_by_text(
+        self, text: str, timeout=3.0, poll_frequency=0.5, ignored_exceptions=None
+    ) -> WebElement:
         """Wait for element by text with xpath"""
-        return self.wait_for_presence_of_element_located_by_xpath(f"//*[text()='{text}']", timeout=timeout, poll_frequency=poll_frequency, ignored_exceptions=ignored_exceptions)
+        return self.wait_for_presence_of_element_located_by_xpath(
+            f"//*[text()='{text}']",
+            timeout=timeout,
+            poll_frequency=poll_frequency,
+            ignored_exceptions=ignored_exceptions,
+        )
 
     def scroll_to_element_by_text(self, text: str) -> WebElement:
         """Scroll to element by text with xpath"""

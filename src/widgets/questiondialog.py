@@ -2,15 +2,16 @@ from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtCore as qtc
 from models import Question
 
+
 class QuestionDialog(qtw.QDialog):
     questionAnswered = qtc.pyqtSignal(Question)
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
-        self.setWindowTitle('Answer Question')
+        self.setWindowTitle("Answer Question")
         self.setModal(True)
-        self.label = qtw.QLabel('Question:')
+        self.label = qtw.QLabel("Question:")
         self.label.setWordWrap(True)
         layout = qtw.QVBoxLayout(self)
         layout.addWidget(self.label)
@@ -20,7 +21,9 @@ class QuestionDialog(qtw.QDialog):
         layout.addWidget(self.answer_text_edit)
         layout.addWidget(self.answer_combo_box)
 
-        self.button_box = qtw.QDialogButtonBox(qtw.QDialogButtonBox.Ok | qtw.QDialogButtonBox.Cancel)
+        self.button_box = qtw.QDialogButtonBox(
+            qtw.QDialogButtonBox.Ok | qtw.QDialogButtonBox.Cancel
+        )
         layout.addWidget(self.button_box)
 
         self.button_box.accepted.connect(self.accept)
@@ -41,7 +44,7 @@ class QuestionDialog(qtw.QDialog):
             self.answer_combo_box.addItems(question.choices)
             if question.answer:
                 self.answer_combo_box.setCurrentText(question.answer)
-        
+
         self.question = question
         self.is_text_input = is_text_input
 
@@ -54,6 +57,6 @@ class QuestionDialog(qtw.QDialog):
             self.question.answer = self.answer_text_edit.toPlainText().strip()
         else:
             self.question.answer = self.answer_combo_box.currentText()
-                
+
         self.questionAnswered.emit(self.question)
         return self.question

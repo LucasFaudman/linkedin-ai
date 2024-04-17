@@ -6,10 +6,18 @@ from pathlib import Path
 from functools import wraps
 from argparse import ArgumentParser
 
-from widgets import LoginDialog, QuestionDialog, SearchAndApplyWidget, JobAppDBInteractionWidget, QuestionDBInteractionWidget, SettingsWidget
+from widgets import (
+    LoginDialog,
+    QuestionDialog,
+    SearchAndApplyWidget,
+    JobAppDBInteractionWidget,
+    QuestionDBInteractionWidget,
+    SettingsWidget,
+)
 from liautomator import LinkedInAutomator, sleep
 from models import Job, Question
 from core.aimanager import Assistant, Thread, Run, Message
+
 
 def thread_safe_dbs(func):
     """
@@ -17,6 +25,7 @@ def thread_safe_dbs(func):
     Prevents errors from using an SQLite object in a different thread than it was created and
     prevents the databases from being locked by multiple threads.
     """
+
     @wraps(func)
     def wrapper(instance, *args, **kwargs):
         rval = None
@@ -31,6 +40,7 @@ def thread_safe_dbs(func):
             # Finally ensures dbs are closed even if an exception is raised
             instance.close_dbs()
         return rval
+
     return wrapper
 
 
@@ -43,9 +53,10 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
 
     All methods that interact with the database(s) are wrapped with the @thread_safe_dbs decorator
     to ensure that the database connections are closed to prevent SQLite errors.
-    
+
     This allows this class to be used in a separate thread to avoid blocking the main (GUI) thread.
     """
+
     # Signals
     scraperInitialized = qtc.pyqtSignal()
     aiAndDBsInitialized = qtc.pyqtSignal()
@@ -62,14 +73,13 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
     searchComplete = qtc.pyqtSignal(list)
     applyingComplete = qtc.pyqtSignal(int, int)
     newQuestion = qtc.pyqtSignal(Question)
-    updatedQuestion = qtc.pyqtSignal(Question)    
+    updatedQuestion = qtc.pyqtSignal(Question)
     deletedQuestion = qtc.pyqtSignal(Question)
     answerNeeded = qtc.pyqtSignal(Question)
 
-    def __init__(self,
-                 ask_when_answer_needed=False,
-                 verify_ai_answers=False,
-                 *args, **kwargs):
+    def __init__(
+        self, ask_when_answer_needed=False, verify_ai_answers=False, *args, **kwargs
+    ):
         self.ask_when_answer_needed = ask_when_answer_needed
         self.verify_ai_answers = verify_ai_answers
         self.last_question = None
@@ -179,11 +189,13 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
 
     def answer_job_question(self, question: Question) -> Question:
         """
-        Attempts to get an answer from the AI for a job application question. 
+        Attempts to get an answer from the AI for a job application question.
         Emits signals when an answer is needed from the user and when the question is updated.
         """
         question = LinkedInAutomator.answer_job_question(self, question)
-        if (not question.answer and self.ask_when_answer_needed) or self.verify_ai_answers:
+        if (
+            not question.answer and self.ask_when_answer_needed
+        ) or self.verify_ai_answers:
             question = self.get_answer_from_user(question)
 
         self.updatedQuestion.emit(question)
@@ -191,13 +203,17 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
 
     def get_answer_from_user(self, question: Question) -> Question:
         """
-        Ask the user for an answer to a job application question. 
+        Ask the user for an answer to a job application question.
         Emits signal with the question and waits for the user to provide an answer.
         """
 
-        self.last_question = "AWAITING ANSWER" # Set last_question to a placeholder value
-        self.answerNeeded.emit(question) # Emit signal to ask user for answer (which creates a QuestionDialog in the main GUI thread)
-        
+        self.last_question = (
+            "AWAITING ANSWER"  # Set last_question to a placeholder value
+        )
+        self.answerNeeded.emit(
+            question
+        )  # Emit signal to ask user for answer (which creates a QuestionDialog in the main GUI thread)
+
         while self.last_question == "AWAITING ANSWER":
             # Process events to allow the GUI to update and wait for an answer or None
             qtc.QCoreApplication.processEvents()
@@ -206,10 +222,10 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
             # Update the question model and DB when an answer is provided by the AI or user
             question = self.last_question
             self.job_app_db.update_model(question)
-            print('Answered question:', question.answer)
+            print("Answered question:", question.answer)
 
         return question
-    
+
     @qtc.pyqtSlot(list)
     @thread_safe_dbs
     def edit_questions(self, questions: list[Question]) -> None:
@@ -225,7 +241,7 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
         for question in questions:
             self.job_app_db.delete_model(question)
             self.deletedQuestion.emit(question)
-            print('Deleted question:', question.question)
+            print("Deleted question:", question.question)
 
     @qtc.pyqtSlot(Question)
     def set_last_question(self, question: Question):
@@ -247,7 +263,7 @@ class MainWindow(qtw.QMainWindow):
     def __init__(self, config_path: Path):
         super().__init__()
 
-        self.setWindowTitle('LinkedIn Automator')
+        self.setWindowTitle("LinkedIn Automator")
         self.setGeometry(100, 100, 800, 800)
 
         self.central_tab_widget = qtw.QTabWidget()
@@ -258,13 +274,12 @@ class MainWindow(qtw.QMainWindow):
         self.question_db_view_widget = QuestionDBInteractionWidget()
         self.settings_widget = SettingsWidget(config_path)
 
+        self.central_tab_widget.addTab(self.search_widget, "Search and Apply for Jobs")
+        self.central_tab_widget.addTab(self.job_app_db_view_widget, "View Job Database")
         self.central_tab_widget.addTab(
-            self.search_widget, 'Search and Apply for Jobs')
-        self.central_tab_widget.addTab(
-            self.job_app_db_view_widget, 'View Job Database')
-        self.central_tab_widget.addTab(
-            self.question_db_view_widget, 'View Question Database')
-        self.central_tab_widget.addTab(self.settings_widget, 'Settings')
+            self.question_db_view_widget, "View Question Database"
+        )
+        self.central_tab_widget.addTab(self.settings_widget, "Settings")
 
         self.login_dialog = LoginDialog(parent=self)
         self.question_dialog = QuestionDialog(parent=self)
@@ -285,18 +300,17 @@ class MainWindow(qtw.QMainWindow):
             self.central_tab_widget.setCurrentIndex(3)
             qtw.QMessageBox.information(
                 self,
-                'Welcome to LinkedIn Automator',
-                'Welcome to LinkedIn Automator!\n\n'
+                "Welcome to LinkedIn Automator",
+                "Welcome to LinkedIn Automator!\n\n"
                 'Configure your settings\nthen click "Update Settings" to get started.\n\n'
-                'Required settings include:\n'
-                '1. OpenAI API Key\n'
-                '2. Webdriver Path',
+                "Required settings include:\n"
+                "1. OpenAI API Key\n"
+                "2. Webdriver Path",
             )
 
     def connect_li_automator_signals(self):
         if not self.li_auto:
-            raise ValueError(
-                'LinkedIn Automator not set up. Call setup_li_auto first.')
+            raise ValueError("LinkedIn Automator not set up. Call setup_li_auto first.")
 
         # Login
         self.login_dialog.loginAttempted.connect(self.li_auto.login)
@@ -306,34 +320,41 @@ class MainWindow(qtw.QMainWindow):
 
         # Filter options
         self.search_widget.search_filters_widget.getFilterOptions.connect(
-            self.li_auto.get_filter_options)  # Get filters for search term in LinkedInAutomator thread
+            self.li_auto.get_filter_options
+        )  # Get filters for search term in LinkedInAutomator thread
         # self.li_auto.gettingFilterOptions.connect(
-            # self.getting_filter_options)  # Update statusbar when starting task
+        # self.getting_filter_options)  # Update statusbar when starting task
         self.search_widget.search_filters_widget.getFilterOptions.connect(
-            self.getting_filter_options)  # Update statusbar when starting task 
+            self.getting_filter_options
+        )  # Update statusbar when starting task
         self.li_auto.getFilterOptionsResult.connect(
-            self.updated_filter_options) # Update statusbar when done getting filter options
+            self.updated_filter_options
+        )  # Update statusbar when done getting filter options
         self.li_auto.getFilterOptionsResult.connect(
-            self.search_widget.update_filter_options)  # Update filter options in search widget
+            self.search_widget.update_filter_options
+        )  # Update filter options in search widget
 
         # Collections options
         self.search_widget.search_collections_widget.getCollections.connect(
-            self.li_auto.get_collections) # Get collections in LinkedInAutomator thread
+            self.li_auto.get_collections
+        )  # Get collections in LinkedInAutomator thread
         self.search_widget.search_collections_widget.getCollections.connect(
-            self.getting_collections) # Update statusbar when starting task
+            self.getting_collections
+        )  # Update statusbar when starting task
         self.li_auto.getCollectionsResult.connect(
-            self.updated_collections) # Update statusbar when done getting collections
+            self.updated_collections
+        )  # Update statusbar when done getting collections
         self.li_auto.getCollectionsResult.connect(
-            self.search_widget.search_collections_widget.update_collections) # Update collections combobox in search widget
-        
+            self.search_widget.search_collections_widget.update_collections
+        )  # Update collections combobox in search widget
+
         # Search for jobs
         # Begin searching in the LinkedInAutomator thread
         self.search_widget.newSearch.connect(self.li_auto.search_jobs)
         # Update statusbar when starting a new job search
         self.search_widget.newSearch.connect(self.new_search)
         # Add jobs to table as they are found
-        self.li_auto.newJob.connect(
-            self.search_widget.jobs_table_widget.append)
+        self.li_auto.newJob.connect(self.search_widget.jobs_table_widget.append)
         # Update statusbar when new job is found
         self.li_auto.newJob.connect(self.new_job)
         # Update statusbar when search is complete
@@ -351,41 +372,45 @@ class MainWindow(qtw.QMainWindow):
 
         # Answer questions AI could not answer and confirm AI answers when needed
         self.search_widget.ask_when_needed_checkbox.stateChanged.connect(
-            self.li_auto.set_ask_when_answer_needed)  # Pause to ask user for answer when needed
+            self.li_auto.set_ask_when_answer_needed
+        )  # Pause to ask user for answer when needed
         self.search_widget.verify_ai_answers_checkbox.stateChanged.connect(
-            self.li_auto.set_verify_ai_answers)  # Pause to verify all AI provided answers
+            self.li_auto.set_verify_ai_answers
+        )  # Pause to verify all AI provided answers
         # Ask user for answer when needed
         self.li_auto.answerNeeded.connect(self.answer_needed)
         # Update statusbar when question is answered
         self.li_auto.updatedQuestion.connect(self.updated_question)
 
         # Request jobs from the database
-        self.job_app_db_view_widget.getJobsFromDB.connect(
-            self.li_auto.get_jobs_from_db)
+        self.job_app_db_view_widget.getJobsFromDB.connect(self.li_auto.get_jobs_from_db)
         # Populate the jobs table with the jobs from the database
         self.li_auto.getJobsFromDBResult.connect(
-            self.job_app_db_view_widget.update_jobs)
+            self.job_app_db_view_widget.update_jobs
+        )
         # Apply to selected jobs in the database
-        self.job_app_db_view_widget.applyJobs.connect(
-            self.li_auto.apply_to_jobs)
+        self.job_app_db_view_widget.applyJobs.connect(self.li_auto.apply_to_jobs)
         self.job_app_db_view_widget.applyJobs.connect(self.begin_applying)
         # Scrape and update selected jobs in the database
-        self.job_app_db_view_widget.scrapeJobs.connect(
-            self.li_auto.scrape_jobs)
+        self.job_app_db_view_widget.scrapeJobs.connect(self.li_auto.scrape_jobs)
         self.li_auto.updatedJob.connect(self.updated_job)
         # Open selected jobs in new tabs
         self.job_app_db_view_widget.openJobs.connect(self.li_auto.open_jobs)
 
         # Request questions from the database
         self.question_db_view_widget.getQuestionsFromDB.connect(
-            self.li_auto.get_questions_from_db)
+            self.li_auto.get_questions_from_db
+        )
         # Populate the questions table with the questions from the database
         self.li_auto.getQuestionsFromDBResult.connect(
-            self.question_db_view_widget.update_questions)
+            self.question_db_view_widget.update_questions
+        )
         # Edit selected questions in the database
         self.question_db_view_widget.editQuestions.connect(self.li_auto.edit_questions)
         # Delete selected questions in the database
-        self.question_db_view_widget.deleteQuestions.connect(self.li_auto.delete_questions)
+        self.question_db_view_widget.deleteQuestions.connect(
+            self.li_auto.delete_questions
+        )
         self.li_auto.deletedQuestion.connect(self.deleted_question)
 
         self.li_auto.aiAndDBsInitialized.connect(self.connect_ai_signals)
@@ -393,12 +418,12 @@ class MainWindow(qtw.QMainWindow):
     @qtc.pyqtSlot()
     def connect_ai_signals(self):
         if not self.li_auto:
-            raise ValueError(
-                'LinkedIn Automator not set up. Call setup_li_auto first.')
+            raise ValueError("LinkedIn Automator not set up. Call setup_li_auto first.")
         if not self.li_auto.ai:
             raise ValueError(
-                'LinkedIn Automator AI not set up. Call setup_li_auto and init_dbs first.')
-        
+                "LinkedIn Automator AI not set up. Call setup_li_auto and init_dbs first."
+            )
+
         self.li_auto.ai.createdAssistant.connect(self.created_assistant)
         self.li_auto.ai.updatedAssistant.connect(self.updated_assistant)
         self.li_auto.ai.createdThread.connect(self.created_thread)
@@ -422,7 +447,7 @@ class MainWindow(qtw.QMainWindow):
         self.teardown_li_auto_thread_if_running()
 
         self.settings = settings
-        auto_login = settings.pop('li_auto_login', False)
+        auto_login = settings.pop("li_auto_login", False)
 
         self.li_auto = LinkedInAutomatorQObject(
             **settings,
@@ -436,8 +461,9 @@ class MainWindow(qtw.QMainWindow):
 
         self.connect_li_automator_signals()
         self.li_auto.init_scraper()
-        self.login(self.settings['li_username'],
-                   self.settings['li_password'], auto_login)
+        self.login(
+            self.settings["li_username"], self.settings["li_password"], auto_login
+        )
 
     def teardown_li_auto_thread_if_running(self):
         try:
@@ -450,10 +476,11 @@ class MainWindow(qtw.QMainWindow):
             if self.li_thread:
                 self.li_thread.quit()
 
-    def login(self, li_username: Optional[str], li_password: Optional[str], auto_login=False):
+    def login(
+        self, li_username: Optional[str], li_password: Optional[str], auto_login=False
+    ):
         if not self.li_auto:
-            raise ValueError(
-                'LinkedIn Automator not set up. Call setup_li_auto first.')
+            raise ValueError("LinkedIn Automator not set up. Call setup_li_auto first.")
 
         self.li_auto.goto_login()
         self.login_dialog.set_texts(li_username, li_password)
@@ -462,24 +489,22 @@ class MainWindow(qtw.QMainWindow):
         else:
             # Show login dialog and start or exit accordingly
             if self.login_dialog.exec_() == qtw.QDialog.Accepted:
-                print('Login successful')
+                print("Login successful")
             else:
-                print('Login canceled')
+                print("Login canceled")
                 self.quit()
 
     @qtc.pyqtSlot()
     def populate_ui(self):
         if not self.li_auto:
-            raise ValueError(
-                'LinkedIn Automator not set up. Call setup_li_auto first.')
-        
+            raise ValueError("LinkedIn Automator not set up. Call setup_li_auto first.")
+
         self.central_tab_widget.setCurrentIndex(0)
         sleep(1)
         self.li_auto.get_jobs_from_db()
         self.li_auto.get_questions_from_db()
-        self.li_auto.get_filter_options('Python Automation')
+        self.li_auto.get_filter_options("Python Automation")
         self.li_auto.get_collections()
-        
 
     @qtc.pyqtSlot(str)
     def update_status(self, message):
@@ -488,7 +513,7 @@ class MainWindow(qtw.QMainWindow):
     # LinkedInAutomator Slots
     @qtc.pyqtSlot(str)
     def getting_filter_options(self, search_term: str):
-        self.update_status(f'Getting Filter Options for {search_term}...')
+        self.update_status(f"Getting Filter Options for {search_term}...")
 
     @qtc.pyqtSlot(dict)
     def updated_filter_options(self, filters):
@@ -496,7 +521,7 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot()
     def getting_collections(self):
-        self.update_status('Getting Collections...')
+        self.update_status("Getting Collections...")
 
     @qtc.pyqtSlot(dict)
     def updated_collections(self, collections):
@@ -505,22 +530,22 @@ class MainWindow(qtw.QMainWindow):
     @qtc.pyqtSlot(dict)
     def new_search(self, filters):
         self.update_status(
-            f"Searching for {filters.get('search_term') or filters.get('collection')} jobs in {filters.get('location') or 'your LinkedIn recommendations'}")
+            f"Searching for {filters.get('search_term') or filters.get('collection')} jobs in {filters.get('location') or 'your LinkedIn recommendations'}"
+        )
 
     @qtc.pyqtSlot(Job)
     def new_job(self, job):
-        self.update_status(
-            f"Found Job ({job.id}): {job.title} at {job.company.name}")
+        self.update_status(f"Found Job ({job.id}): {job.title} at {job.company.name}")
 
     @qtc.pyqtSlot(Job)
     def opened_job(self, job):
-        self.update_status(
-            f"Opened Job ({job.id}): {job.title} at {job.company.name}")
+        self.update_status(f"Opened Job ({job.id}): {job.title} at {job.company.name}")
 
     @qtc.pyqtSlot(Job)
     def updated_job(self, job):
         self.update_status(
-            f"Updated Job ({job.id}): {job.title} at {job.company.name}. Status: {job.status}")
+            f"Updated Job ({job.id}): {job.title} at {job.company.name}. Status: {job.status}"
+        )
 
     @qtc.pyqtSlot(list)
     def search_complete(self, jobs):
@@ -533,13 +558,15 @@ class MainWindow(qtw.QMainWindow):
     @qtc.pyqtSlot(Job)
     def applied_job(self, job):
         self.update_status(
-            f"Applied to Job ({job.id}): {job.title} at {job.company.name}")
+            f"Applied to Job ({job.id}): {job.title} at {job.company.name}"
+        )
         self.search_widget.jobs_table_widget.remove_item(job)
 
     @qtc.pyqtSlot(int, int)
     def applying_complete(self, sucessful_jobs, total_jobs):
         self.update_status(
-            f"Applied to {sucessful_jobs} jobs. {total_jobs - sucessful_jobs} jobs need input or failed.")
+            f"Applied to {sucessful_jobs} jobs. {total_jobs - sucessful_jobs} jobs need input or failed."
+        )
 
     @qtc.pyqtSlot(Question)
     def answer_needed(self, question):
@@ -552,11 +579,12 @@ class MainWindow(qtw.QMainWindow):
     @qtc.pyqtSlot(Question)
     def updated_question(self, question):
         self.update_status(
-            f"Answered question: {question.question}. Answer: {question.answer}")
+            f"Answered question: {question.question}. Answer: {question.answer}"
+        )
 
     @qtc.pyqtSlot(Question)
     def deleted_question(self, question):
-        self.update_status(f"Deleted question: {question.question}")            
+        self.update_status(f"Deleted question: {question.question}")
 
     # JobAppAI Slots
 
@@ -574,7 +602,9 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(Message)
     def added_message_to_thread(self, message):
-        self.update_status(f"Added message: {message.id} to thread: {message.thread_id} with content: {message.content}") 
+        self.update_status(
+            f"Added message: {message.id} to thread: {message.thread_id} with content: {message.content}"
+        )
 
     @qtc.pyqtSlot(Run)
     def created_run(self, run):
@@ -590,7 +620,9 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(Run)
     def run_completed(self, run):
-        self.update_status(f"Run {run.id} completed successfully with status: {run.status}")
+        self.update_status(
+            f"Run {run.id} completed successfully with status: {run.status}"
+        )
 
     @qtc.pyqtSlot(str, dict)
     def new_tool_call(self, tool_name, arguments):
@@ -598,7 +630,9 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(str, dict, object)
     def tool_outputs_submitted(self, tool_name, arguments, outputs):
-        self.update_status(f"Submitted tool {tool_name} outputs to AI: {outputs} for arguments: {arguments}")
+        self.update_status(
+            f"Submitted tool {tool_name} outputs to AI: {outputs} for arguments: {arguments}"
+        )
 
     @qtc.pyqtSlot(int)
     def waiting_for_response(self, sleep_interval):
@@ -615,7 +649,9 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(Question)
     def answered_question(self, question):
-        self.update_status(f"Answered AI question: {question.question} with answer: {question.answer}")
+        self.update_status(
+            f"Answered AI question: {question.question} with answer: {question.answer}"
+        )
 
     @qtc.pyqtSlot(Question)
     def answer_unknown(self, question):
@@ -623,11 +659,15 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(Job)
     def writing_cover_letter(self, job):
-        self.update_status(f"Writing cover letter for job: {job.title} at {job.company.name}")
+        self.update_status(
+            f"Writing cover letter for job: {job.title} at {job.company.name}"
+        )
 
     @qtc.pyqtSlot(Job, str)
     def wrote_cover_letter(self, job, cover_letter_text):
-        self.update_status(f"Wrote cover letter for job: {job.title} at {job.company.name}: {cover_letter_text}")
+        self.update_status(
+            f"Wrote cover letter for job: {job.title} at {job.company.name}: {cover_letter_text}"
+        )
 
     def quit(self):
         self.teardown_li_auto_thread_if_running()
@@ -636,11 +676,14 @@ class MainWindow(qtw.QMainWindow):
         exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument('--config-path', '-c',
-                        type=Path,
-                        default=Path('./linkedin-automator-config.json'))
+    parser.add_argument(
+        "--config-path",
+        "-c",
+        type=Path,
+        default=Path("./linkedin-automator-config.json"),
+    )
     args = parser.parse_args()
 
     app = qtw.QApplication([])

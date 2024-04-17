@@ -9,7 +9,7 @@ class LoginDialog(qtw.QDialog):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle('LinkedIn Automator is starting up...')
+        self.setWindowTitle("LinkedIn Automator is starting up...")
         self.setGeometry(100, 100, 400, 200)
         self.setModal(True)
 
@@ -18,14 +18,13 @@ class LoginDialog(qtw.QDialog):
 
         layout = qtw.QVBoxLayout()
 
-        self.username_label = qtw.QLabel('Username:')
-        self.password_label = qtw.QLabel('Password:')
+        self.username_label = qtw.QLabel("Username:")
+        self.password_label = qtw.QLabel("Password:")
         self.username_input = qtw.QLineEdit()
         self.password_input = qtw.QLineEdit()
-        self.password_input.setEchoMode(
-            qtw.QLineEdit.Password)  # Hide password input
+        self.password_input.setEchoMode(qtw.QLineEdit.Password)  # Hide password input
 
-        self.login_button = qtw.QPushButton('Login')
+        self.login_button = qtw.QPushButton("Login")
         self.login_button.clicked.connect(self.handle_login)
 
         layout.addWidget(self.username_label)
@@ -39,9 +38,9 @@ class LoginDialog(qtw.QDialog):
         self.password_input.hide()
         self.login_button.hide()
 
-        self.overlay_text = qtw.QLabel('LinkedIn Automator is starting up...')
+        self.overlay_text = qtw.QLabel("LinkedIn Automator is starting up...")
         self.overlay_text.show()
-        self.overlay_button = qtw.QPushButton('Completed Captcha')
+        self.overlay_button = qtw.QPushButton("Completed Captcha")
         self.overlay_button.hide()
         self.overlay_button.clicked.connect(self.onLoginSuccess)
 
@@ -69,13 +68,14 @@ class LoginDialog(qtw.QDialog):
 
     def show_initializing_and_accept(self) -> None:
         self.show_overlay(
-            overlay_text='Login successful. Initializing...',
-            window_title='Initializing...')
+            overlay_text="Login successful. Initializing...",
+            window_title="Initializing...",
+        )
         self.accept()
         self.loginDone.emit()
 
     def onLoginReady(self) -> None:
-        self.setWindowTitle('Login to LinkedIn')
+        self.setWindowTitle("Login to LinkedIn")
         self.overlay_text.hide()
         self.overlay_button.hide()
         self.username_label.show()
@@ -91,8 +91,8 @@ class LoginDialog(qtw.QDialog):
         else:
             self.show_overlay(
                 overlay_text='Captcha required. Please complete the captcha and click "Completed Captcha" to continue.',
-                button_text='Completed Captcha',
-                window_title='Captcha Required'
+                button_text="Completed Captcha",
+                window_title="Captcha Required",
             )
 
     def onLoginSuccess(self) -> None:
@@ -100,7 +100,7 @@ class LoginDialog(qtw.QDialog):
 
     def handle_login(self) -> None:
         self.login_button.setEnabled(False)
-        self.show_overlay('Attempting to log in...')
+        self.show_overlay("Attempting to log in...")
         username = self.username_input.text()
         password = self.password_input.text()
         self.loginAttempted.emit(username, password)

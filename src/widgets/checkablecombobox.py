@@ -2,6 +2,7 @@ from PyQt5 import QtCore as qtc
 from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtGui as qtg
 
+
 class CheckableComboBox(qtw.QComboBox):
     dataChanged = qtc.pyqtSignal(list)
 
@@ -27,9 +28,9 @@ class CheckableComboBox(qtw.QComboBox):
         self.setItemDelegate(CheckableComboBox.Delegate())
 
         # Update the text when an item is toggled
-        self.model().dataChanged.connect(self.updateText)        
+        self.model().dataChanged.connect(self.updateText)
         self.model().dataChanged.connect(self.onDataChanged)
-        
+
         # Hide and show popup when clicking the line edit
         self.lineEdit().installEventFilter(self)
         self.closeOnLineEditClick = False
@@ -43,7 +44,6 @@ class CheckableComboBox(qtw.QComboBox):
         super().resizeEvent(event)
 
     def eventFilter(self, object, event):
-
         if object == self.lineEdit():
             if event.type() == qtc.QEvent.MouseButtonRelease:
                 if self.closeOnLineEditClick:
@@ -90,9 +90,11 @@ class CheckableComboBox(qtw.QComboBox):
         text = ", ".join(texts)
 
         # Compute elided text (with "...")
-        
+
         metrics = qtg.QFontMetrics(self.lineEdit().font())
-        elidedText = metrics.elidedText(text, qtc.Qt.ElideRight, self.lineEdit().width())
+        elidedText = metrics.elidedText(
+            text, qtc.Qt.ElideRight, self.lineEdit().width()
+        )
         self.lineEdit().setText(elidedText)
 
     def addItem(self, text, userData=None, checked=False):
@@ -103,7 +105,9 @@ class CheckableComboBox(qtw.QComboBox):
         else:
             item.setData(userData)
         item.setFlags(qtc.Qt.ItemIsEnabled | qtc.Qt.ItemIsUserCheckable)
-        item.setData(qtc.Qt.Checked if checked else qtc.Qt.Unchecked, qtc.Qt.CheckStateRole)
+        item.setData(
+            qtc.Qt.Checked if checked else qtc.Qt.Unchecked, qtc.Qt.CheckStateRole
+        )
         self.model().appendRow(item)
 
     def addItems(self, texts, datalist=None, checked=False):
@@ -119,7 +123,7 @@ class CheckableComboBox(qtw.QComboBox):
             if self.model().item(i).text() == text:
                 self.model().removeRow(i)
                 break
-    
+
     def removeItems(self, texts):
         for text in texts:
             self.removeItem(text)
