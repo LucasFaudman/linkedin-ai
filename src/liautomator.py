@@ -1,5 +1,5 @@
-from pathlib import Path
 from typing import Union, Iterator, Iterable, Optional, Callable, Literal
+from pathlib import Path
 from time import sleep
 from datetime import datetime, timedelta
 

@@ -1,10 +1,10 @@
-from PyQt5 import QtCore as qtc
-from PyQt5 import QtWidgets as qtw
-
 from typing import Optional, Union, Iterator
 from pathlib import Path
 from functools import wraps
 from argparse import ArgumentParser
+
+from PyQt5 import QtCore as qtc
+from PyQt5 import QtWidgets as qtw
 
 from widgets import (
     LoginDialog,
