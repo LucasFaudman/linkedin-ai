@@ -361,6 +361,7 @@ class LinkedInAutomator:
             job_id = job_card.attrs["data-job-id"]
             link_elm = job_card.find("a")
             title = link_elm.text.strip()
+            title = title[: len(title) // 2]
             url = "https://www.linkedin.com/jobs/view/" + job_id + "/"
             company_name = job_card.find(
                 "span", attrs={"class": "job-card-container__primary-description"}
@@ -473,8 +474,10 @@ class LinkedInAutomator:
 
         # Salary and benefits details
         if salary_container := soup.find("div", attrs={"id": "SALARY"}):
-            if (salary_div := salary_container.find_all("div", attrs={"class": "mt4"})[1]) and (
-                salary_p := salary_div.find("p")
+            if (
+                (salary_divs := salary_container.find_all("div", attrs={"class": "mt4"}))
+                and len(salary_divs) > 1
+                and (salary_p := salary_divs[1].find("p"))
             ):
                 pay_range = [s.replace("$", "").replace(",", "") for s in salary_p.text.strip().split() if "/" in s]
                 min_pay = pay_range[0]
