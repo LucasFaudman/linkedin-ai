@@ -41,7 +41,7 @@ class LinkedInAutomator:
         self,
         li_username: Optional[str] = None,
         li_password: Optional[str] = None,
-        resume_path: str | Path = "resume_path.txt",
+        resume_path: str | Path = "resume.txt",
         default_cover_letter_path: Optional[str | Path] = None,
         cover_letter_output_dir: str | Path = "./cover-letters/",
         cover_letter_action: Literal["skip", "default", "generate"] = "skip",
@@ -51,7 +51,7 @@ class LinkedInAutomator:
         thread_id=None,
         api_key="OPENAI_API_KEY",
         model="gpt-3.5-turbo",
-        webdriver_path: str = "chromedriver",
+        webdriver_path: str = "./chromedriver",
         user_agent=None,
         proxy=None,
     ):
@@ -60,35 +60,23 @@ class LinkedInAutomator:
         self.li_password = li_password
 
         # resume_path is handled as a Path and text is read from the file.
-        resume_path = (
-            resume_path if isinstance(resume_path, Path) else Path(resume_path)
-        )
+        resume_path = resume_path if isinstance(resume_path, Path) else Path(resume_path)
         self.resume = resume_path.read_text()
 
         # default_convert_letter_path is handled as a str since it is used later with input_elm.send_keys()
         self.default_cover_letter_path = (
-            default_cover_letter_path
-            if isinstance(default_cover_letter_path, str)
-            else str(default_cover_letter_path)
+            default_cover_letter_path if isinstance(default_cover_letter_path, str) else str(default_cover_letter_path)
         )
         self.cover_letter_action = cover_letter_action
 
         # cover_letter_output_dir is handled as a Path object
         self.cover_letter_output_dir = (
-            cover_letter_output_dir
-            if isinstance(cover_letter_output_dir, Path)
-            else Path(cover_letter_output_dir)
+            cover_letter_output_dir if isinstance(cover_letter_output_dir, Path) else Path(cover_letter_output_dir)
         )
 
         # Both job_app_db_path and ai_db_path are handled as Path objects
-        self.job_app_db_path = (
-            job_app_db_path
-            if isinstance(job_app_db_path, Path)
-            else Path(job_app_db_path)
-        )
-        self.ai_db_path = (
-            ai_db_path if isinstance(ai_db_path, Path) else Path(ai_db_path)
-        )
+        self.job_app_db_path = job_app_db_path if isinstance(job_app_db_path, Path) else Path(job_app_db_path)
+        self.ai_db_path = ai_db_path if isinstance(ai_db_path, Path) else Path(ai_db_path)
 
         # These are initialized in init_dbs() so this can be used in separate threads from the thread that initializes the object
         self.job_app_db = None
@@ -167,9 +155,7 @@ class LinkedInAutomator:
         if self.scraper.current_url != linkendin_login_url:
             self.scraper.goto(linkendin_login_url, sleep_secs=2)
 
-    def login(
-        self, li_username: Optional[str] = None, li_password: Optional[str] = None
-    ):
+    def login(self, li_username: Optional[str] = None, li_password: Optional[str] = None):
         """Logs into LinkedIn using the provided credentials or the ones provided in the constructor."""
         # Use the provided credentials or the ones provided in the constructor
         li_username = li_username or self.li_username
@@ -196,9 +182,7 @@ class LinkedInAutomator:
         self.click_button_with_aria_label(
             "Show all filters. Clicking this button displays all available filter options."
         )
-        self.scraper.wait_for_visibility_of_element_located_by_id(
-            "reusable-search-advanced-filters-right-panel"
-        )
+        self.scraper.wait_for_visibility_of_element_located_by_id("reusable-search-advanced-filters-right-panel")
 
         filters = {}
         for filter_container in self.scraper.soup.find_all(
@@ -212,9 +196,7 @@ class LinkedInAutomator:
                 filter_type = "toggle"
 
             choices = []
-            for choice in filter_container.find_all(
-                "li", attrs={"class": "search-reusables__filter-value-item"}
-            ):
+            for choice in filter_container.find_all("li", attrs={"class": "search-reusables__filter-value-item"}):
                 choice_text = choice.text.strip().split("\n")[0]
                 if choice_text.startswith("Add a"):
                     continue
@@ -231,9 +213,7 @@ class LinkedInAutomator:
         """Gets the available LinkedIn job collections."""
         self.scraper.goto("https://www.linkedin.com/jobs/collections/", sleep_secs=2)
         collections = {}
-        for collection_elm in self.scraper.soup.find_all(
-            "li", attrs={"class": "jobs-search-discovery-tabs__listitem"}
-        ):
+        for collection_elm in self.scraper.soup.find_all("li", attrs={"class": "jobs-search-discovery-tabs__listitem"}):
             collection_name = collection_elm.text.strip()
             collection_url = collection_elm.find("a").attrs["href"]
             collection_tag = collection_url.split("/")[-1].split("?")[0].strip()
@@ -306,11 +286,7 @@ class LinkedInAutomator:
                     filter_value_map = filter_values_map[filter_name]
                     if isinstance(filter_value, list):
                         filter_value = "%2C".join(
-                            (
-                                filter_value_map[value]
-                                for value in filter_value
-                                if value in filter_value_map
-                            )
+                            (filter_value_map[value] for value in filter_value if value in filter_value_map)
                         )
                     else:
                         filter_value = filter_value_map.get(filter_value)
@@ -330,9 +306,7 @@ class LinkedInAutomator:
             params["refresh"] = "true"
             params["spellCorrectionEnabled"] = "true"
 
-        search_url = base_url + "&".join(
-            f"{key}={value}" for key, value in params.items()
-        )
+        search_url = base_url + "&".join(f"{key}={value}" for key, value in params.items())
         return search_url
 
     def iter_jobs(self, filters: dict) -> Iterator[Job]:
@@ -355,9 +329,7 @@ class LinkedInAutomator:
 
     def click_button_with_aria_label(self, label="") -> None:
         """Clicks a button on the LinkedIn page with the provided aria-label."""
-        self.scraper.find_element_by_css_selector(
-            f"button[aria-label='{label}']"
-        ).click()
+        self.scraper.find_element_by_css_selector(f"button[aria-label='{label}']").click()
 
     def click_next_page(self) -> bool:
         """Attempts to click the next page button on the LinkedIn search page. Returns True if successful, False otherwise."""
@@ -393,9 +365,7 @@ class LinkedInAutomator:
             company_name = job_card.find(
                 "span", attrs={"class": "job-card-container__primary-description"}
             ).text.strip()
-            location = job_card.find(
-                "li", attrs={"class": "job-card-container__metadata-item"}
-            ).text.strip()
+            location = job_card.find("li", attrs={"class": "job-card-container__metadata-item"}).text.strip()
             if "(" in location:
                 location, workplace_type = location.split("(", 1)
                 location = location.strip()
@@ -430,44 +400,37 @@ class LinkedInAutomator:
         # BeautifulSoup4 is used to parse the static HTML of the job page
         soup = self.scraper.soup
 
+        company_dict = {}
+        if company_name_elm := soup.find("div", attrs={"class": "job-details-jobs-unified-top-card__company-name"}):
+            company_dict["name"] = company_name_elm.text.strip()
+
         # Job and company details
         if (
             details_container := soup.find(
                 "div",
-                attrs={
-                    "class": "job-details-jobs-unified-top-card__primary-description-container"
-                },
+                attrs={"class": "job-details-jobs-unified-top-card__primary-description-container"},
             )
         ) and "·" in details_container.text:
             details = [detail.strip() for detail in details_container.text.split("·")]
-            company_name, location, date_posted = details[:3]
-            company_dict = {"name": company_name}
+            location, date_posted = details[:2]
 
             job.location = location
             job.date_posted = parse_relative_date(date_posted)
-            if len(details) > 3:
-                num_applicants = details[3]
+            if len(details) > 2:
+                num_applicants = details[2]
                 if num_applicants.endswith("applicants"):
                     job.num_applicants = num_applicants
 
             if a_elm := details_container.find("a", attrs={"href": True}):
                 company_dict["url"] = a_elm.attrs["href"]
 
-            if company_container := soup.find(
-                "div", attrs={"class": "jobs-company__box"}
-            ):
+            if company_container := soup.find("div", attrs={"class": "jobs-company__box"}):
                 company_dict["description"] = company_container.find(
                     "p", attrs={"class": "jobs-company__company-description"}
                 ).text.strip()
 
-                if company_details := company_container.find(
-                    "div", attrs={"class": "t-14"}
-                ):
-                    details = [
-                        s.strip()
-                        for s in company_details.text.strip().split("\n")
-                        if s.strip()
-                    ]
+                if company_details := company_container.find("div", attrs={"class": "t-14"}):
+                    details = [s.strip() for s in company_details.text.strip().split("\n") if s.strip()]
                     for detail in details:
                         if "employees" in detail:
                             company_dict["num_employees"] = detail
@@ -482,9 +445,7 @@ class LinkedInAutomator:
         if (
             insights_container := soup.find(
                 "li",
-                attrs={
-                    "class": "job-details-jobs-unified-top-card__job-insight--highlight"
-                },
+                attrs={"class": "job-details-jobs-unified-top-card__job-insight--highlight"},
             )
         ) and (insights := insights_container.find("span")):
             for elm in insights:
@@ -498,38 +459,24 @@ class LinkedInAutomator:
                         job.seniority_level = stripped_text
 
         # Hiring manager details
-        if hirer_card := soup.find(
-            "div", attrs={"class": "hirer-card__hirer-information"}
-        ):
+        if hirer_card := soup.find("div", attrs={"class": "hirer-card__hirer-information"}):
             job.hiring_manager = HiringManager(
-                name=hirer_card.find(
-                    "span", attrs={"class": "jobs-poster__name"}
-                ).text.strip(),
-                title=hirer_card.find(
-                    "div", attrs={"class": "hirer-card__hirer-job-title"}
-                ).text.strip(),
+                name=hirer_card.find("span", attrs={"class": "jobs-poster__name"}).text.strip(),
+                title=hirer_card.find("div", attrs={"class": "hirer-card__hirer-job-title"}).text.strip(),
                 linkedin_url=hirer_card.find("a", attrs={"href": True}).attrs["href"],
                 company_name=job.company.name,
             )
 
         # Job description
         if description_container := soup.find("div", attrs={"id": "job-details"}):
-            job.description = (
-                description_container.text.replace("About the job", "")
-                .replace("About Us", "")
-                .strip()
-            )
+            job.description = description_container.text.replace("About the job", "").replace("About Us", "").strip()
 
         # Salary and benefits details
         if salary_container := soup.find("div", attrs={"id": "SALARY"}):
-            if (
-                salary_div := salary_container.find("div", attrs={"class": "mt4"})
-            ) and (salary_p := salary_div.find("p")):
-                pay_range = [
-                    s.replace("$", "").replace(",", "")
-                    for s in salary_p.text.strip().split()
-                    if "/" in s
-                ]
+            if (salary_div := salary_container.find_all("div", attrs={"class": "mt4"})[1]) and (
+                salary_p := salary_div.find("p")
+            ):
+                pay_range = [s.replace("$", "").replace(",", "") for s in salary_p.text.strip().split() if "/" in s]
                 min_pay = pay_range[0]
                 if len(pay_range) > 1:
                     max_pay = pay_range[1]
@@ -549,15 +496,11 @@ class LinkedInAutomator:
                     job.max_hourly = job.max_salary / (40 * 50)
                     job.pay_type = "salary"
 
-            if benefits_items := salary_container.find_all(
-                "li", attrs={"class": "featured-benefits__benefit"}
-            ):
+            if benefits_items := salary_container.find_all("li", attrs={"class": "featured-benefits__benefit"}):
                 job.benefits = [elm.text.strip() for elm in benefits_items]
 
         # Job skills
-        if skills_items := soup.find_all(
-            "a", attrs={"class": "job-details-how-you-match__skills-item-subtitle"}
-        ):
+        if skills_items := soup.find_all("a", attrs={"class": "job-details-how-you-match__skills-item-subtitle"}):
             job.skills = []
             for elm in skills_items:
                 for skill in elm.text.strip().split(","):
@@ -567,33 +510,21 @@ class LinkedInAutomator:
                     job.skills.append(skill)
 
         # Easy Apply (Determines if job can be applied to directly from LinkedIn)
-        if apply_button := soup.find(
-            "div", attrs={"class": "jobs-apply-button--top-card"}
-        ):
-            job.easy_apply = (
-                "Easy Apply" in apply_button.text or "Continue" in apply_button.text
-            )
+        if apply_button := soup.find("div", attrs={"class": "jobs-apply-button--top-card"}):
+            job.easy_apply = "Easy Apply" in apply_button.text or "Continue" in apply_button.text
 
         # Closed job application status
-        elif feedback_message := soup.find(
-            "span", attrs={"class": "artdeco-inline-feedback__message"}
-        ):
+        elif feedback_message := soup.find("span", attrs={"class": "artdeco-inline-feedback__message"}):
             if "No longer accepting applications" in feedback_message.text:
                 job.status = "closed"
 
         # Post submission application status (applied, viewed, downloaded, etc.)
-        if post_apply_content := soup.find(
-            "div", attrs={"class": "post-apply-timeline__content"}
-        ):
-            for post_appy_entity in post_apply_content.find_all(
-                "li", attrs={"class": "post-apply-timeline__entity"}
-            )[::-1]:
-                activity = post_appy_entity.find(
-                    "span", attrs={"class": "full-width"}
-                ).text.strip()
-                time = post_appy_entity.find(
-                    "span", attrs={"class": "post-apply-timeline__entity-time"}
-                ).text.strip()
+        if post_apply_content := soup.find("div", attrs={"class": "post-apply-timeline__content"}):
+            for post_appy_entity in post_apply_content.find_all("li", attrs={"class": "post-apply-timeline__entity"})[
+                ::-1
+            ]:
+                activity = post_appy_entity.find("span", attrs={"class": "full-width"}).text.strip()
+                time = post_appy_entity.find("span", attrs={"class": "post-apply-timeline__entity-time"}).text.strip()
                 if activity == "Resume downloaded":
                     job.status = "downloaded"
                     break
@@ -621,15 +552,11 @@ class LinkedInAutomator:
         """Applies to a job on LinkedIn using the provided Job object."""
         # Navigate to the job page and update the job details then wait for the apply button to load
         job = self.update_job(job)
-        self.scraper.wait_for_visibility_of_element_located_by_class_name(
-            "jobs-apply-button--top-card"
-        ).click()
+        self.scraper.wait_for_visibility_of_element_located_by_class_name("jobs-apply-button--top-card").click()
 
         # Fill out the job application form until complete or an error occurs
         status = "incomplete"
-        while (soup := self.scraper.soup) and not soup.find(
-            "button", attrs={"aria-label": "Submit application"}
-        ):
+        while (soup := self.scraper.soup) and not soup.find("button", attrs={"aria-label": "Submit application"}):
             try:
                 # Loop through input element and Question pairs
                 for input_elm, question in self.get_questions():
@@ -637,9 +564,7 @@ class LinkedInAutomator:
 
                     # Get the answer from the DB if it exists
                     if (
-                        saved_question := self.job_app_db.get_model(
-                            Question, question.question
-                        )
+                        saved_question := self.job_app_db.get_model(Question, question.question)
                     ) and saved_question.answer:
                         question.answer = saved_question.answer
                     else:
@@ -670,27 +595,19 @@ class LinkedInAutomator:
                             input_elm.send_keys(question.answer)
                             input_elm.send_keys(Keys.TAB)
                         except Exception as e:
-                            print(
-                                f"Failed to send keys to element. Ignoring error: {e}"
-                            )
+                            print(f"Failed to send keys to element. Ignoring error: {e}")
 
                 # Upload cover letter if needed
-                if upload_elms := soup.find_all(
-                    "label", attrs={"class": "jobs-document-upload__upload-button"}
-                ):
+                if upload_elms := soup.find_all("label", attrs={"class": "jobs-document-upload__upload-button"}):
                     for upload_elm in upload_elms:
                         if "Upload cover letter" in upload_elm.text:
                             if self.cover_letter_action == "skip":
                                 upload_success = False
                             elif self.cover_letter_action == "default":
-                                upload_success = self.upload_cover_letter(
-                                    self.default_cover_letter_path
-                                )
+                                upload_success = self.upload_cover_letter(self.default_cover_letter_path)
                             elif self.cover_letter_action == "generate":
                                 cover_letter_path = self.generate_cover_letter(job)
-                                upload_success = self.upload_cover_letter(
-                                    cover_letter_path
-                                )
+                                upload_success = self.upload_cover_letter(cover_letter_path)
 
                             # Exit if a cover letter is needed but not uploaded
                             if not upload_success:
@@ -706,9 +623,7 @@ class LinkedInAutomator:
                 if soup.find("button", attrs={"aria-label": "Continue to next step"}):
                     self.click_button_with_aria_label("Continue to next step")
 
-                elif soup.find(
-                    "button", attrs={"aria-label": "Review your application"}
-                ):
+                elif soup.find("button", attrs={"aria-label": "Review your application"}):
                     self.click_button_with_aria_label("Review your application")
 
             except Exception as e:
@@ -721,23 +636,17 @@ class LinkedInAutomator:
             status = "complete"
 
         if status != "complete":
-            print(
-                f"Failed to apply to job {job.title} at {job.company.name} in {job.location}. Status: {status}"
-            )
+            print(f"Failed to apply to job {job.title} at {job.company.name} in {job.location}. Status: {status}")
             job.status = status
             self.job_app_db.update_model(job)
             # Close and save the application for later then return the job if the application is incomplete
             self.click_button_with_aria_label("Dismiss")
-            self.scraper.find_element_by_css_selector(
-                f"button[data-control-name='save_application_btn']"
-            ).click()
+            self.scraper.find_element_by_css_selector(f"button[data-control-name='save_application_btn']").click()
             return job
 
         try:
             # Attempt to unfollow the company after applying
-            self.scraper.find_element_by_css_selector(
-                "label[for='follow-company-checkbox']"
-            ).click()
+            self.scraper.find_element_by_css_selector("label[for='follow-company-checkbox']").click()
         except Exception as e:
             print(f"Failed to unfollow company. Ignoring. Error: {e}")
 
@@ -751,14 +660,8 @@ class LinkedInAutomator:
 
     def upload_cover_letter(self, cover_letter_path: str | Path) -> bool:
         """Uploads a cover letter to the LinkedIn job application form."""
-        cover_letter_path = (
-            cover_letter_path
-            if isinstance(cover_letter_path, str)
-            else str(cover_letter_path)
-        )
-        for input_elm in self.scraper.find_elements_by_css_selector(
-            "input[name='file']"
-        ):
+        cover_letter_path = cover_letter_path if isinstance(cover_letter_path, str) else str(cover_letter_path)
+        for input_elm in self.scraper.find_elements_by_css_selector("input[name='file']"):
             if "cover-letter" in input_elm.get_attribute("id"):
                 input_elm.send_keys(cover_letter_path)
                 return True
@@ -769,9 +672,7 @@ class LinkedInAutomator:
     ) -> Iterator[tuple[WebElement | dict[str, WebElement], Question]]:
         """Yields Question objects and the corresponding input elements on the LinkedIn job application form."""
         question_count = 0
-        for form_elm in self.scraper.find_elements_by_class_name(
-            "jobs-easy-apply-form-section__grouping"
-        ):
+        for form_elm in self.scraper.find_elements_by_class_name("jobs-easy-apply-form-section__grouping"):
             # Simple text input
             for container_elm, input_elm in zip(
                 form_elm.find_elements("class name", "artdeco-text-input--container"),
@@ -780,9 +681,7 @@ class LinkedInAutomator:
                 question_text = container_elm.text
                 current_val = input_elm.get_attribute("value")
                 question_count += 1
-                yield input_elm, Question(
-                    question=question_text, answer=current_val, choices=None
-                )
+                yield input_elm, Question(question=question_text, answer=current_val, choices=None)
 
             # TODO Test with https://www.linkedin.com/jobs/view/3864508460/
             # Textarea multi-line input
@@ -790,60 +689,38 @@ class LinkedInAutomator:
                 question_text = textarea.get_attribute("aria-label")
                 current_val = textarea.get_attribute("value")
                 question_count += 1
-                yield textarea, Question(
-                    question=question_text, answer=current_val, choices=None
-                )
+                yield textarea, Question(question=question_text, answer=current_val, choices=None)
 
             # Dropdown selection
             for select_elm in form_elm.find_elements("tag name", "select"):
                 question_text = select_elm.accessible_name
-                choices = [
-                    elm.accessible_name
-                    for elm in select_elm.find_elements("tag name", "option")[1:]
-                ]
-                current_val = (
-                    value
-                    if (value := select_elm.get_attribute("value"))
-                    != "Select an option"
-                    else None
-                )
+                choices = [elm.accessible_name for elm in select_elm.find_elements("tag name", "option")[1:]]
+                current_val = value if (value := select_elm.get_attribute("value")) != "Select an option" else None
                 if question_text != "Select Language":
                     question_count += 1
-                    yield select_elm, Question(
-                        question=question_text, answer=current_val, choices=choices
-                    )
+                    yield select_elm, Question(question=question_text, answer=current_val, choices=choices)
 
             # Form input with choices (radio, checkbox, etc.)
-            for form_label in form_elm.find_elements(
-                "class name", "fb-dash-form-element__label"
-            ):
+            for form_label in form_elm.find_elements("class name", "fb-dash-form-element__label"):
                 question_text = form_label.find_element("tag name", "span").text
                 # Label refers to input element by id and input is interactable
                 if input_id := form_label.get_attribute("for"):
                     input_elm = form_elm.find_element("id", input_id)
                     current_val = input_elm.get_attribute("value")
                     question_count += 1
-                    yield input_elm, Question(
-                        question=question_text, answer=current_val, choices=None
-                    )
+                    yield input_elm, Question(question=question_text, answer=current_val, choices=None)
 
                 else:
                     # Each choice is a separate label/input element pair, but the input is not interactable, the label is
                     choices = []
                     input_elms = {}
-                    for select_elm in form_elm.find_elements(
-                        "class name", "fb-text-selectable__option"
-                    ):
+                    for select_elm in form_elm.find_elements("class name", "fb-text-selectable__option"):
                         choice = select_elm.text
                         choices.append(choice)
-                        input_elms[choice] = select_elm.find_element(
-                            "tag name", "label"
-                        )
+                        input_elms[choice] = select_elm.find_element("tag name", "label")
 
                     question_count += 1
-                    yield input_elms, Question(
-                        question=question_text, answer=None, choices=choices
-                    )
+                    yield input_elms, Question(question=question_text, answer=None, choices=choices)
 
         if question_count == 0:
             print("Failed to find input element for question. Skipping")
@@ -860,18 +737,14 @@ class LinkedInAutomator:
         """Tries to preform a function to each job in the provided iterable and yields the job if successful."""
         initial_tab = self.scraper.current_tab
         for job in jobs_iter:
-            print(
-                f"Trying {func} on {job.id}: {job.title} at {job.company.name} in {job.location}"
-            )
+            print(f"Trying {func} on {job.id}: {job.title} at {job.company.name} in {job.location}")
             try:
                 if new_tab:
                     self.scraper.new_tab()
                     self.scraper.switch_to_tab(index=-1)
                 yield func(job)
             except Exception as e:
-                print(
-                    f"Failed {job.id}: {job.title} at {job.company.name} in {job.location}. Error: {e}"
-                )
+                print(f"Failed {job.id}: {job.title} at {job.company.name} in {job.location}. Error: {e}")
 
             if new_tab and close_tab_after:
                 try:
@@ -894,9 +767,7 @@ class LinkedInAutomator:
 
     def open_jobs(self, jobs_iter: Iterable[Job]) -> Iterator[Job]:
         """Opens a new tab with the LinkedIn job page for each job in the provided iterable"""
-        return self._try_func_on_jobs(
-            jobs_iter, self.goto_job, new_tab=True, close_tab_after=False
-        )
+        return self._try_func_on_jobs(jobs_iter, self.goto_job, new_tab=True, close_tab_after=False)
 
     def answer_job_question(self, question: Question) -> Question:
         """Asks the AI or user to answer a job application question."""
