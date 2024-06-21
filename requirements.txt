@@ -1,0 +1,6 @@
+souperscraper
+openai
+tiktoken
+pydantic
+python-docx
+pyqt5

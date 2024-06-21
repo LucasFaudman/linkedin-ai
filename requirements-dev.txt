@@ -1,11 +1,3 @@
-openai
-tiktoken
-pydantic
-selenium
-beautifulsoup4
-requests
-python-docx
-pyqt5
 black
 pylint
 pytest
