@@ -3,7 +3,7 @@ from pathlib import Path
 from time import sleep
 from datetime import datetime, timedelta
 
-from core.souperscraper import SouperScraper, Keys, WebElement
+from souperscraper import SouperScraper, Keys, WebElement
 from jobdb import JobAppDB
 from jobai import JobAppAI
 from models import Job, Company, HiringManager, Question
