@@ -1,4 +1,4 @@
-from typing import Optional, Union, Iterator
+from typing import Optional, List, Iterator
 from pathlib import Path
 from functools import wraps
 from argparse import ArgumentParser
@@ -120,14 +120,14 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
         self.getCollectionsResult.emit(collections)
 
     @thread_safe_dbs
-    def get_jobs_from_db(self) -> list[Job]:
+    def get_jobs_from_db(self) -> List[Job]:
         """Get all jobs from the database. Emits signal with the jobs. Used to populate the GUI."""
         all_jobs = self.job_app_db.get_models(Job)
         self.getJobsFromDBResult.emit(all_jobs)
         return all_jobs
 
     @thread_safe_dbs
-    def get_questions_from_db(self) -> list[Question]:
+    def get_questions_from_db(self) -> List[Question]:
         """Get all questions from the database. Emits signal with the questions. Used to populate the GUI."""
         all_questions = self.job_app_db.get_models(Question)
         self.getQuestionsFromDBResult.emit(all_questions)
@@ -153,7 +153,7 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
 
     @qtc.pyqtSlot(dict)
     @thread_safe_dbs
-    def search_jobs(self, filters: dict) -> list[Job]:
+    def search_jobs(self, filters: dict) -> List[Job]:
         """Search for jobs with the given filters. Emits signal with each job found, and when complete."""
         jobs = list(self.iter_jobs(filters))
         self.searchComplete.emit(jobs)
@@ -161,21 +161,21 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
 
     @qtc.pyqtSlot(list)
     @thread_safe_dbs
-    def scrape_jobs(self, jobs: list[Job]) -> list[Job]:
+    def scrape_jobs(self, jobs: List[Job]) -> List[Job]:
         """Scrape the details for a list of jobs. Emits signal with each updated job."""
         jobs = list(self.update_jobs(jobs))
         return jobs
 
     @qtc.pyqtSlot(list)
     @thread_safe_dbs
-    def open_jobs(self, jobs: list[Job]) -> list[Job]:
+    def open_jobs(self, jobs: List[Job]) -> List[Job]:
         """Open the LinkedIn job pages in new tab for a list of jobs. Emits signal with each job page opened."""
         jobs = list(LinkedInAutomator.open_jobs(self, jobs))
         return jobs
 
     @qtc.pyqtSlot(list)
     @thread_safe_dbs
-    def apply_to_jobs(self, jobs: list[Job]) -> list[Job]:
+    def apply_to_jobs(self, jobs: List[Job]) -> List[Job]:
         """Apply to a list of jobs. Emits signal with each job applied to, and with the results when complete."""
         sucessful_apply_jobs = []
         for job in LinkedInAutomator.apply_to_jobs(self, jobs):
@@ -222,7 +222,7 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
 
     @qtc.pyqtSlot(list)
     @thread_safe_dbs
-    def edit_questions(self, questions: list[Question]) -> None:
+    def edit_questions(self, questions: List[Question]) -> None:
         """Edit a list of questions. Emits signal with each question edited."""
         for question in questions:
             self.get_answer_from_user(question)
@@ -230,7 +230,7 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
 
     @qtc.pyqtSlot(list)
     @thread_safe_dbs
-    def delete_questions(self, questions: list[Question]) -> None:
+    def delete_questions(self, questions: List[Question]) -> None:
         """Delete a list of questions. Emits signal with each question deleted."""
         for question in questions:
             self.job_app_db.delete_model(question)
@@ -632,6 +632,7 @@ class MainWindow(qtw.QMainWindow):
         self.update_status(f"Wrote cover letter for job: {job.title} at {job.company.name}: {cover_letter_text}")
 
     def quit(self):
+        print("Quitting...")
         self.teardown_li_auto_thread_if_running()
         self.close()
 
@@ -648,8 +649,13 @@ def main():
 
     app = qtw.QApplication([])
     window = MainWindow(config_path=args.config_path)
-    exit_code = app.exec()
-    app.exit(exit_code)
+    try:
+        exit_code = app.exec()
+    except KeyboardInterrupt:
+        window.quit()
+        exit_code = 0
+    finally:
+        app.exit(exit_code)
 
 
 if __name__ == "__main__":
