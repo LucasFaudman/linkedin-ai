@@ -171,12 +171,11 @@ class OpenAIManager:
         serializeable_types = (str, int, float, bool, type(None))
         if isinstance(obj, dict):
             return {k: self.recursively_make_serializeable(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
+        if isinstance(obj, list):
             return [self.recursively_make_serializeable(item) for item in obj]
-        elif not isinstance(obj, serializeable_types):
+        if not isinstance(obj, serializeable_types):
             return str(obj)
-        else:
-            return obj
+        return obj
 
     def format_content(self, content):
         """Formats content for use a message content. If content is not a string, it is converted to json_"""
@@ -273,6 +272,7 @@ class OpenAIManager:
             active_run_id = next((msg_part for msg_part in e.message.split() if "run_" in msg_part), None)
             if active_run_id:
                 canceled_run = self.cancel_run(active_run_id, thread_id)
+                print("Canceled Run", canceled_run)
 
             return self.add_message_to_thread(content, thread_id)
 
@@ -313,7 +313,7 @@ class OpenAIManager:
                 # Handles tool calls and submits tool outputs to run then recursively calls wait_for_response
                 return self.handle_submit_tool_outputs_required(run, sleep_interval, **kwargs)
 
-            elif run.status in ("cancelled", "failed", "expired"):
+            if run.status in ("cancelled", "failed", "expired"):
                 self.save_run_steps(run_id, thread_id)
                 raise RunStatusError(run.status, run.last_error)
 
@@ -376,7 +376,7 @@ class OpenAIManager:
         ass_id=None,
         thread_id=None,
         system_prompt=None,
-        tools_names=[],
+        tool_names=None,
         sleep_interval=5,
         run_status_error_retries=1,
         **kwargs,
@@ -396,7 +396,7 @@ class OpenAIManager:
         if system_prompt != ass.instructions:
             update_kwargs.update({"instructions": system_prompt})
         # Check for different tool names in tools argument and Assitants current tools
-        tools = [self.tools[tool_name][0] for tool_name in tools_names]
+        tools = [self.tools[tool_name][0] for tool_name in (tool_names or ())]
         if tools != [tool.model_dump() for tool in ass.tools]:
             update_kwargs.update({"tools": tools})
 
@@ -430,11 +430,10 @@ class OpenAIManager:
                     ass_id,
                     thread_id,
                     system_prompt,
-                    tools_names,
+                    tool_names,
                     sleep_interval,
                     run_status_error_retries - 1,  # Decrement retries
                     **kwargs,
                 )
 
-            else:
-                raise e  # Raise the RunStatusError if no more retries
+            raise e  # Raise the RunStatusError if no more retries
