@@ -1,5 +1,7 @@
 from setuptools import setup, find_packages
-import setuptools_scm
+
+with open("README.md", mode="r", encoding="utf-8") as f:
+    README = f.read()
 
 setup(
     name="linkedin-ai",
@@ -7,7 +9,7 @@ setup(
     use_scm_version=True,
     setup_requires=["setuptools_scm>=8", "wheel"],
     description="Linkedin AI is a tool that fully automates scraping and submitting Linkedin job applications using OpenAI.",
-    long_description=open("README.md").read(),
+    long_description=README,
     long_description_content_type="text/markdown",
     author="Lucas Faudman",
     author_email="lucasfaudman@gmail.com",
