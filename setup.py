@@ -8,7 +8,7 @@ setup(
     version="0.6.0",
     use_scm_version=True,
     setup_requires=["setuptools_scm>=8", "wheel"],
-    description="Linkedin AI is a tool that fully automates scraping and submitting Linkedin job applications using OpenAI.",
+    description="Automate searching for jobs and submitting applications on LinkedIn using OpenAI",
     long_description=README,
     long_description_content_type="text/markdown",
     author="Lucas Faudman",

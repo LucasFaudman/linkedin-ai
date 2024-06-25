@@ -10,7 +10,7 @@ version = "0.6.0"
 requires-python = ">=3.7"
 readme = "README.md"
 license = { file = "LICENSE" }
-description = "Linkedin AI is a tool that fully automates scraping and submitting Linkedin job applications using OpenAI."
+description = "Automate searching for jobs and submitting applications on LinkedIn using OpenAI"
 keywords = [
 "linkedin", "openai", "automation", "job", "applications", "ai", "linkedin-ai", "linkedin scraper",
 "linkedin job applications", "linkedin automation", "selenium", "bs4", "PyQt5", "gui"
