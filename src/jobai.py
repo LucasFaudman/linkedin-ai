@@ -102,10 +102,9 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
                 self.runCompleted.emit(run)
                 break
 
-            else:
-                print(f"Waiting {sleep_interval} seconds for response")
-                self.waitingForResponse.emit(sleep_interval)
-                sleep(sleep_interval)
+            print(f"Waiting {sleep_interval} seconds for response")
+            self.waitingForResponse.emit(sleep_interval)
+            sleep(sleep_interval)
 
         messages = self.client.beta.threads.messages.list(thread_id)
         if self.db:

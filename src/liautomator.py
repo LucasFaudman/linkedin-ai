@@ -1,4 +1,4 @@
-from typing import Union, Iterator, Iterable, Optional, Callable, Literal
+from typing import Optional, Union, Iterator, Iterable, Callable, Literal, Tuple, Dict
 from pathlib import Path
 from time import sleep
 from datetime import datetime, timedelta
@@ -41,12 +41,12 @@ class LinkedInAutomator:
         self,
         li_username: Optional[str] = None,
         li_password: Optional[str] = None,
-        resume_path: str | Path = "resume.txt",
-        default_cover_letter_path: Optional[str | Path] = None,
-        cover_letter_output_dir: str | Path = "./cover-letters/",
+        resume_path: Union[str, Path] = "resume.txt",
+        default_cover_letter_path: Optional[Union[str, Path]] = None,
+        cover_letter_output_dir: Union[str, Path] = "./cover-letters/",
         cover_letter_action: Literal["skip", "default", "generate"] = "skip",
-        job_app_db_path: str | Path = "jobs.db",
-        ai_db_path: str | Path = "ai.db",
+        job_app_db_path: Union[str, Path] = "jobs.db",
+        ai_db_path: Union[str, Path] = "ai.db",
         assistant_id=None,
         thread_id=None,
         api_key="OPENAI_API_KEY",
@@ -531,7 +531,7 @@ class LinkedInAutomator:
                 if activity == "Resume downloaded":
                     job.status = "downloaded"
                     break
-                elif activity == "Application viewed":
+                if activity == "Application viewed":
                     job.status = "viewed"
                     break
                 elif activity == "Application submitted" and job.status not in (
@@ -644,7 +644,7 @@ class LinkedInAutomator:
             self.job_app_db.update_model(job)
             # Close and save the application for later then return the job if the application is incomplete
             self.click_button_with_aria_label("Dismiss")
-            self.scraper.find_element_by_css_selector(f"button[data-control-name='save_application_btn']").click()
+            self.scraper.find_element_by_css_selector("button[data-control-name='save_application_btn']").click()
             return job
 
         try:
@@ -661,7 +661,7 @@ class LinkedInAutomator:
         print(f"Applied to job {job.title} at {job.company.name} in {job.location}")
         return job
 
-    def upload_cover_letter(self, cover_letter_path: str | Path) -> bool:
+    def upload_cover_letter(self, cover_letter_path: Union[str, Path]) -> bool:
         """Uploads a cover letter to the LinkedIn job application form."""
         cover_letter_path = cover_letter_path if isinstance(cover_letter_path, str) else str(cover_letter_path)
         for input_elm in self.scraper.find_elements_by_css_selector("input[name='file']"):
@@ -672,7 +672,7 @@ class LinkedInAutomator:
 
     def get_questions(
         self,
-    ) -> Iterator[tuple[WebElement | dict[str, WebElement], Question]]:
+    ) -> Iterator[Tuple[Union[WebElement, Dict[str, WebElement]], Question]]:
         """Yields Question objects and the corresponding input elements on the LinkedIn job application form."""
         question_count = 0
         for form_elm in self.scraper.find_elements_by_class_name("jobs-easy-apply-form-section__grouping"):
