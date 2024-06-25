@@ -1,12 +1,14 @@
+from typing import Union
+
 from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtCore as qtc
 from pydantic import BaseModel
+
 from .modeltablewidget import ModelTableWidget
-from typing import Optional, Union
 
 
 class JobsTableWidget(ModelTableWidget):
-    def transform_item_for_table(self, item: BaseModel | dict) -> dict:
+    def transform_item_for_table(self, item: Union[BaseModel, dict]) -> dict:
         if isinstance(item, BaseModel):
             item = item.model_dump()
             if company := item["company"]:

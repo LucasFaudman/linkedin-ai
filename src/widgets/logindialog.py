@@ -1,6 +1,7 @@
+from typing import Optional
+
 from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtCore as qtc
-from typing import Optional
 
 
 class LoginDialog(qtw.QDialog):

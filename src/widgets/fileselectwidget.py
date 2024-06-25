@@ -1,7 +1,8 @@
+from typing import Optional, TypeVar, Type
+from pathlib import Path
+
 from PyQt5 import QtCore as qtc
 from PyQt5 import QtWidgets as qtw
-from typing import Optional, Union, TypeVar, Type
-from pathlib import Path
 
 T = TypeVar("T")
 
@@ -16,7 +17,7 @@ class FileSelectWidget(qtw.QWidget):
         dialog_title: Optional[str] = None,
         no_selection_text: str = "No File Selected",
         return_as: type = Path,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(**kwargs)
 
@@ -27,9 +28,7 @@ class FileSelectWidget(qtw.QWidget):
 
         if initial_path and not isinstance(initial_path, Path):
             initial_path = Path(initial_path).resolve()
-        initial_label_text = (
-            str(initial_path) if initial_path else self.no_selection_text
-        )
+        initial_label_text = str(initial_path) if initial_path else self.no_selection_text
 
         layout = qtw.QHBoxLayout(self)
         self.file_path_label = qtw.QLabel(initial_label_text)
@@ -52,3 +51,4 @@ class FileSelectWidget(qtw.QWidget):
         path = self.file_path_label.text()
         if path != self.no_selection_text:
             return self._type_path(path, self.return_as)
+        return None

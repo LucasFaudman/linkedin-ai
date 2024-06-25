@@ -1,7 +1,8 @@
+from typing import Optional, Union, List
+
 from PyQt5 import QtCore as qtc
 from PyQt5 import QtWidgets as qtw
 from .checkablecombobox import CheckableComboBox
-from typing import Optional, Union
 
 
 class ComboBoxWithUpdateButtons(qtw.QWidget):
@@ -9,7 +10,7 @@ class ComboBoxWithUpdateButtons(qtw.QWidget):
 
     def __init__(
         self,
-        initial_options: Optional[list[str]] = None,
+        initial_options: Optional[List[str]] = None,
         initial_text: Optional[str] = None,
         add_new_button_text: str = "Add New",
         do_add_new_button_text: str = "Add",

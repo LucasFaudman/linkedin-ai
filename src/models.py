@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, List
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -6,7 +6,7 @@ from pydantic import BaseModel
 class Question(BaseModel):
     question: str
     answer: Optional[str] = None
-    choices: Optional[list[str]] = None
+    choices: Optional[List[str]] = None
 
 
 class Company(BaseModel):
@@ -41,8 +41,8 @@ class Job(BaseModel):
     employment_type: Optional[str] = None
     seniority_level: Optional[str] = None
     description: Optional[str] = None
-    skills: Optional[list[str]] = None
-    benefits: Optional[list[str]] = None
+    skills: Optional[List[str]] = None
+    benefits: Optional[List[str]] = None
     hiring_manager: Optional[HiringManager] = None
     easy_apply: Optional[Union[bool, int]] = None
     date_posted: Optional[Union[datetime, str]] = None

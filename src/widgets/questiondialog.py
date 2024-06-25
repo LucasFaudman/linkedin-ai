@@ -21,13 +21,14 @@ class QuestionDialog(qtw.QDialog):
         layout.addWidget(self.answer_text_edit)
         layout.addWidget(self.answer_combo_box)
 
-        self.button_box = qtw.QDialogButtonBox(
-            qtw.QDialogButtonBox.Ok | qtw.QDialogButtonBox.Cancel
-        )
+        self.button_box = qtw.QDialogButtonBox(qtw.QDialogButtonBox.Ok | qtw.QDialogButtonBox.Cancel)
         layout.addWidget(self.button_box)
 
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
+
+        self.question = None
+        self.is_text_input = None
 
     def ask_question(self, question: Question) -> None:
         self.label.setText(question.question)

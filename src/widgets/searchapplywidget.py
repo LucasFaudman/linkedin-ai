@@ -1,8 +1,10 @@
+from typing import Optional, Dict
+
 from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtCore as qtc
+
 from .checkablecombobox import CheckableComboBox
 from .jobappdbwidgets import JobsTableWidget
-from typing import Optional
 
 
 class SearchFiltersWidget(qtw.QWidget):
@@ -18,7 +20,7 @@ class SearchFiltersWidget(qtw.QWidget):
         self.setup_ui()
 
     def setup_ui(self) -> None:
-        self.input_widgets: dict[str, qtw.QWidget] = {}
+        self.input_widgets: Dict[str, qtw.QWidget] = {}
         if (layout := self.layout()) is None:
             layout = qtw.QFormLayout(self)
 
@@ -35,16 +37,12 @@ class SearchFiltersWidget(qtw.QWidget):
         if self.location:
             self.location_input.setText(self.location)
         self.location_input.textChanged.connect(self.emit_values)
-        self.location_input.setSizePolicy(
-            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Fixed
-        )
+        self.location_input.setSizePolicy(qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Fixed)
         layout.addRow("Location", self.location_input)
 
         self.update_filters_button = qtw.QPushButton("Update Filter Options")
         self.update_filters_button.clicked.connect(self.get_filter_options)
-        self.update_filters_button.setSizePolicy(
-            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Fixed
-        )
+        self.update_filters_button.setSizePolicy(qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Fixed)
         layout.addWidget(self.update_filters_button)
 
         for key, (input_type, choices) in self.input_dict.items():
@@ -75,14 +73,15 @@ class SearchFiltersWidget(qtw.QWidget):
             layout.addRow(label, widget)
             self.input_widgets[key] = widget
 
-    def get_search_filters(self) -> dict[str, Optional[str]]:
+    def get_search_filters(self) -> Dict[str, Optional[str]]:
         self.search_term = self.search_input.text()
         self.location = self.location_input.text()
-        values: dict[str, Optional[str]] = {
+        values: Dict[str, Optional[str]] = {
             "search_term": self.search_term,
             "location": self.location,
         }
         for key, widget in self.input_widgets.items():
+            value = None
             if isinstance(widget, qtw.QLineEdit):
                 value = widget.text()
             elif isinstance(widget, qtw.QCheckBox):
@@ -108,12 +107,8 @@ class SearchFiltersWidget(qtw.QWidget):
     @qtc.pyqtSlot(dict)
     def update_filter_options(self, new_input_dict: dict) -> None:
         self.input_dict = {
-            "Easy Apply": new_input_dict.pop(
-                "Easy Apply", ("toggle", None)
-            ),  # Put Easy Apply first
-            "Remote": new_input_dict.pop(
-                "Remote", ("toggle", None)
-            ),  # Put Remote second
+            "Easy Apply": new_input_dict.pop("Easy Apply", ("toggle", None)),  # Put Easy Apply first
+            "Remote": new_input_dict.pop("Remote", ("toggle", None)),  # Put Remote second
             "Distance": (
                 "radio",
                 ["5 miles", "10 miles", "25 miles", "50 miles", "100 miles"],
@@ -153,7 +148,7 @@ class SearchCollectionsWidget(qtw.QWidget):
         self.collection_combobox.clear()
         self.collection_combobox.addItems(self.collections)
 
-    def get_search_filters(self) -> dict[str, str]:
+    def get_search_filters(self) -> Dict[str, str]:
         collection_tag = self.collections[self.collection_combobox.currentText()]
         return {"collection": collection_tag}
 
@@ -181,9 +176,7 @@ class SearchAndApplyWidget(qtw.QWidget):
         search_layout.addWidget(self.search_jobs_button)
 
         select_apply_layout = qtw.QVBoxLayout()
-        self.jobs_table_widget = JobsTableWidget(
-            [], resize_columns=["title", "company", "location"]
-        )
+        self.jobs_table_widget = JobsTableWidget([], resize_columns=["title", "company", "location"])
         select_apply_layout.addWidget(self.jobs_table_widget)
 
         interaction_form = qtw.QHBoxLayout()

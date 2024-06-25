@@ -1,3 +1,9 @@
+from ast import literal_eval as ast_literal_eval
+from pathlib import Path
+from json import loads as json_loads, dumps as json_dumps
+from time import sleep
+from typing import Union, Optional, Dict, Tuple, Callable
+
 from openai import OpenAI, OpenAIError, BadRequestError
 from openai.types.beta import Assistant, Thread
 from openai.types.beta.threads import Message, Run, Text
@@ -22,12 +28,6 @@ from openai.types.beta.retrieval_tool import RetrievalTool
 from openai.types.beta.function_tool import FunctionTool
 
 from tiktoken import get_encoding, encoding_for_model
-from ast import literal_eval as ast_literal_eval
-from pathlib import Path
-from json import loads as json_loads, dumps as json_dumps
-from time import sleep
-from typing import Union, Optional, Dict, Tuple, Callable
-
 
 from .sqldantic import BaseDB, pluralize
 
@@ -154,9 +154,7 @@ class OpenAIManager:
                 # every message follows <im_start>{role/name}\n{content}<im_end>\n
                 num_tokens += 4
                 for key, value in message.items():
-                    num_tokens += len(
-                        encoding.encode(value, disallowed_special=disallowed_special)
-                    )
+                    num_tokens += len(encoding.encode(value, disallowed_special=disallowed_special))
                     if key == "name":  # if there's a name, the role is omitted
                         num_tokens += -1  # role is always required and always 1 token
 
@@ -220,9 +218,7 @@ class OpenAIManager:
     def create_run(self, ass_id, thread_id, **kwargs):
         """Creates a run and stores it in ai_runs dict and ai_assistants_dir/run_ids.txt"""
 
-        run = self.client.beta.threads.runs.create(
-            assistant_id=ass_id, thread_id=thread_id, **kwargs
-        )
+        run = self.client.beta.threads.runs.create(assistant_id=ass_id, thread_id=thread_id, **kwargs)
 
         if self.db:
             self.db.insert_model(run)
@@ -267,18 +263,14 @@ class OpenAIManager:
 
         role = "user"
         try:
-            message = self.client.beta.threads.messages.create(
-                thread_id=thread_id, content=content, role=role
-            )
+            message = self.client.beta.threads.messages.create(thread_id=thread_id, content=content, role=role)
             if self.db:
                 self.db.insert_model(message)
             return message
 
         except BadRequestError as e:
             print(e.message)
-            active_run_id = next(
-                (msg_part for msg_part in e.message.split() if "run_" in msg_part), None
-            )
+            active_run_id = next((msg_part for msg_part in e.message.split() if "run_" in msg_part), None)
             if active_run_id:
                 canceled_run = self.cancel_run(active_run_id, thread_id)
 
@@ -286,9 +278,7 @@ class OpenAIManager:
 
     def cancel_run(self, run_id, thread_id):
         print(f"Canceling {run_id}")
-        canceled_run = self.client.beta.threads.runs.cancel(
-            run_id=run_id, thread_id=thread_id
-        )
+        canceled_run = self.client.beta.threads.runs.cancel(run_id=run_id, thread_id=thread_id)
 
         if self.db:
             self.db.update_model(canceled_run)
@@ -297,9 +287,7 @@ class OpenAIManager:
 
     def save_run_steps(self, run_id, thread_id):
         print(f"Saving run steps for run {run_id}")
-        run_steps = self.client.beta.threads.runs.steps.list(
-            run_id=run_id, thread_id=thread_id, limit=100, order="asc"
-        )
+        run_steps = self.client.beta.threads.runs.steps.list(run_id=run_id, thread_id=thread_id, limit=100, order="asc")
 
         if self.db:
             self.db.insert_models(*run_steps)
@@ -314,9 +302,7 @@ class OpenAIManager:
         """
         run = None
         while not run or run.status in ("queued", "in_progress"):
-            run = self.client.beta.threads.runs.retrieve(
-                thread_id=thread_id, run_id=run_id
-            )
+            run = self.client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run_id)
 
             if self.db:
                 self.db.update_model(run)
@@ -325,9 +311,7 @@ class OpenAIManager:
 
             if run.status == "requires_action":
                 # Handles tool calls and submits tool outputs to run then recursively calls wait_for_response
-                return self.handle_submit_tool_outputs_required(
-                    run, sleep_interval, **kwargs
-                )
+                return self.handle_submit_tool_outputs_required(run, sleep_interval, **kwargs)
 
             elif run.status in ("cancelled", "failed", "expired"):
                 self.save_run_steps(run_id, thread_id)
@@ -382,9 +366,7 @@ class OpenAIManager:
         try:
             return self.tools[tool_name][1](arguments, **kwargs)
         except Exception as e:
-            err_msg = (
-                f"Error getting tool output: {e}. Try again with different arguments."
-            )
+            err_msg = f"Error getting tool output: {e}. Try again with different arguments."
             print(err_msg)
             return err_msg
 
@@ -432,9 +414,7 @@ class OpenAIManager:
 
         # Wait for messages and recursively handle tool_calls until run is complete or RunStatusError occurs
         try:
-            messages = self.wait_for_response(
-                thread.id, run.id, sleep_interval, **kwargs
-            )
+            messages = self.wait_for_response(thread.id, run.id, sleep_interval, **kwargs)
 
             print(f"Done {ass.id}, {thread.id}, {run.id}")
             return ass, thread, run, messages

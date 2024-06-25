@@ -1,4 +1,4 @@
-from typing import Union, Optional, Dict, Tuple, Callable
+from typing import Optional, List, Dict, Tuple
 from pathlib import Path
 from datetime import datetime
 from docx import Document
@@ -82,9 +82,7 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
         """
         run = None
         while not run or run.status in ("queued", "in_progress"):
-            run = self.client.beta.threads.runs.retrieve(
-                thread_id=thread_id, run_id=run_id
-            )
+            run = self.client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run_id)
 
             if self.db:
                 self.db.update_model(run)
@@ -94,14 +92,12 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
 
             if run.status == "requires_action":
                 # Handles tool calls and submits tool outputs to run then recursively calls wait_for_response
-                return self.handle_submit_tool_outputs_required(
-                    run, sleep_interval, **kwargs
-                )
+                return self.handle_submit_tool_outputs_required(run, sleep_interval, **kwargs)
 
-            elif run.status in ("cancelled", "failed", "expired"):
+            if run.status in ("cancelled", "failed", "expired"):
                 raise RunStatusError(run.status, run.last_error)
 
-            elif run.status == "completed":
+            if run.status == "completed":
                 print(f"Run {run.id} completed")
                 self.runCompleted.emit(run)
                 break
@@ -198,11 +194,12 @@ class JobAppAI(OpenAIManagerQObject):
         cover_letter_output_dir: Path = Path("./cover-letters/"),
         cover_letter_start_text: str = "Dear Hiring Manager,",
         cover_letter_end_text: str = "Sincerely,\n<Candidate Name>",
-        cover_letter_example_texts: Optional[list[str]] = None,
+        cover_letter_example_texts: Optional[List[str]] = None,
     ) -> None:
         self.job_app_db = job_app_db
         self.assistant_id = assistant_id
         self.thread_id = thread_id
+        self.run_id = None
         tools = {
             "search_answered_questions_db": (
                 self.SEARCH_JOB_DB_FOR_QUESTIONS_TOOL,
@@ -218,22 +215,18 @@ class JobAppAI(OpenAIManagerQObject):
 
         super().__init__(api_key=api_key, model=model, tools=tools, db_path=ai_db_path)
 
-    def search_answered_questions_db(self, arguments: dict) -> dict[str, str]:
+    def search_answered_questions_db(self, arguments: dict) -> Dict[str, str]:
         """Search the database of previously answered questions for question:answer pairs matching the provided keywords."""
         keywords = arguments["keywords"]
         questions = self.job_app_db.get_questions_containing_keywords(*keywords)
-        tool_output = {
-            question.question: question.answer
-            for question in questions
-            if question.answer
-        }
+        tool_output = {question.question: question.answer for question in questions if question.answer}
         return tool_output
 
     def add_resume_to_system_prompt(self, system_prompt: str) -> str:
         """Add resume to system prompt."""
         return system_prompt + f"\nResume:\n{self.resume}"
 
-    def answer_job_questions(self, *questions: Question) -> tuple[Question, ...]:
+    def answer_job_questions(self, *questions: Question) -> Tuple[Question, ...]:
         """
         Answers job application questions using the AI assistant.
         Updates the question object with the answer when the answer is not 'ANSWER UNKNOWN'.
@@ -289,7 +282,7 @@ class JobAppAI(OpenAIManagerQObject):
 
         return questions
 
-    def write_job_cover_letters(self, *jobs: Job) -> dict[Job, Path]:
+    def write_job_cover_letters(self, *jobs: Job) -> Dict[Job, Path]:
         """
         Writes job application cover letters using the AI assistant.
         Creates a .docx in cover_letter_output_dir named: {job.company.name}-{job.id}-cover-letter.docx
@@ -316,18 +309,12 @@ class JobAppAI(OpenAIManagerQObject):
         system_prompt = self.add_resume_to_system_prompt(system_prompt)
 
         if self.cover_letter_example_texts:
-            for i, example_cover_letter in enumerate(
-                self.cover_letter_example_texts, start=1
-            ):
-                system_prompt += (
-                    f"\n\nExample Cover Letter {i}:\n{example_cover_letter}"
-                )
+            for i, example_cover_letter in enumerate(self.cover_letter_example_texts, start=1):
+                system_prompt += f"\n\nExample Cover Letter {i}:\n{example_cover_letter}"
 
         cover_letter_paths = {}
         for job in jobs:
-            print(
-                f"\n\nWriting cover letter for Job ({job.id}): {job.title} at {job.company.name}"
-            )
+            print(f"\n\nWriting cover letter for Job ({job.id}): {job.title} at {job.company.name}")
             self.writingCoverLetter.emit(job)
 
             ass, thread, run, messages = self.run_with_assistant(
@@ -344,18 +331,13 @@ class JobAppAI(OpenAIManagerQObject):
             self.run_id = run.id
 
             cover_letter_text = messages.data[0].content[0].text.value
-            cover_letter_path = (
-                self.cover_letter_output_dir
-                / f"{job.company.name}-{job.id}-cover-letter.docx"
-            )
+            cover_letter_path = self.cover_letter_output_dir / f"{job.company.name}-{job.id}-cover-letter.docx"
             cover_letter_doc = Document()
             cover_letter_doc.add_paragraph(cover_letter_text)
             cover_letter_doc.save(str(cover_letter_path))
             cover_letter_paths[job] = cover_letter_path
 
-            print(
-                f"\nDone writing cover letter for Job ({job.id}): {job.title} at {job.company.name}"
-            )
+            print(f"\nDone writing cover letter for Job ({job.id}): {job.title} at {job.company.name}")
             self.wroteCoverLetter.emit(job, cover_letter_text)
 
         return cover_letter_paths

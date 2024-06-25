@@ -1,3 +1,4 @@
+from typing import Set, Tuple
 from core.sqldantic import BaseDB, SQLDanticSchema
 from models import Job, Question
 
@@ -7,14 +8,16 @@ class JobAppDB(BaseDB):
         """Creates the tables to store Job, Company, HiringManager, and Question models."""
         self.create_tables_from_models(Job, Question)
 
-    def get_all_job_ids(self) -> set[str]:
+    def get_all_job_ids(self) -> Set[str]:
         """Get all job ids from the jobs table with a direct SQL query."""
         query = "SELECT id FROM jobs"
         self.execute_and_commit(query, ())
         return set(row[0] for row in self.cursor.fetchall())
 
     @staticmethod
-    def select_questions_or_answer_like_keyword(sqldantic_schema: SQLDanticSchema, *args):
+    def select_questions_or_answer_like_keyword(
+        sqldantic_schema: SQLDanticSchema, *args
+    ) -> Tuple[str, Tuple[str, ...]]:
         """A select query factory that returns a query to select questions or answers that contain any of the given keywords."""
         condition_clause = " OR ".join("question LIKE ?" for arg in args)
         condition_clause += " OR " + " OR ".join("answer LIKE ?" for arg in args)

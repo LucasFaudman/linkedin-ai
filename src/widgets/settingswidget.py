@@ -1,8 +1,9 @@
-from PyQt5 import QtCore as qtc
-from PyQt5 import QtWidgets as qtw
-from typing import Optional
+from typing import Optional, Union, Dict
 from pathlib import Path
 from json import load as json_load, dump as json_dump
+
+from PyQt5 import QtCore as qtc
+from PyQt5 import QtWidgets as qtw
 
 from .fileselectwidget import FileSelectWidget
 from .comboboxwithupdatebuttons import ComboBoxWithUpdateButtons
@@ -64,17 +65,13 @@ class SettingsWidget(qtw.QWidget):
             initial_path=self.config["default_cover_letter_path"],
             button_text="Select Default Cover Letter",
         )
-        user_settings_layout.addRow(
-            "Default Cover Letter Path:", self.default_cover_letter_path_file_select
-        )
+        user_settings_layout.addRow("Default Cover Letter Path:", self.default_cover_letter_path_file_select)
 
         self.cover_letter_output_dir_file_select = FileSelectWidget(
             initial_path=self.config["cover_letter_output_dir"],
             button_text="Select Cover Letter Output Path",
         )
-        user_settings_layout.addRow(
-            "Cover Letter Output Directory:", self.cover_letter_output_dir_file_select
-        )
+        user_settings_layout.addRow("Cover Letter Output Directory:", self.cover_letter_output_dir_file_select)
 
         self.cover_letter_action_combo_box = qtw.QComboBox()
         cover_letter_actions = {
@@ -84,20 +81,14 @@ class SettingsWidget(qtw.QWidget):
         }
         for action, description in cover_letter_actions.items():
             self.cover_letter_action_combo_box.addItem(description, action)
-        self.cover_letter_action_combo_box.setCurrentText(
-            cover_letter_actions[self.config["cover_letter_action"]]
-        )
-        user_settings_layout.addRow(
-            "Cover Letter Action:", self.cover_letter_action_combo_box
-        )
+        self.cover_letter_action_combo_box.setCurrentText(cover_letter_actions[self.config["cover_letter_action"]])
+        user_settings_layout.addRow("Cover Letter Action:", self.cover_letter_action_combo_box)
 
         self.job_app_db_file_select = FileSelectWidget(
             initial_path=self.config["job_app_db_path"],
             button_text="Select Job Application DB Path",
         )
-        user_settings_layout.addRow(
-            "Job Application DB Path:", self.job_app_db_file_select
-        )
+        user_settings_layout.addRow("Job Application DB Path:", self.job_app_db_file_select)
 
         # LinkedIn settings
         linkedin_settings_groupbox = qtw.QGroupBox("LinkedIn Settings")
@@ -106,22 +97,16 @@ class SettingsWidget(qtw.QWidget):
 
         self.li_username_line_edit = qtw.QLineEdit()
         self.li_username_line_edit.setText(self.config["li_username"])
-        linkedin_settings_layout.addRow(
-            "LinkedIn Username:", self.li_username_line_edit
-        )
+        linkedin_settings_layout.addRow("LinkedIn Username:", self.li_username_line_edit)
 
         self.li_password_line_edit = qtw.QLineEdit()
         self.li_password_line_edit.setEchoMode(qtw.QLineEdit.Password)
         self.li_password_line_edit.setText(self.config["li_password"])
-        linkedin_settings_layout.addRow(
-            "LinkedIn Password:", self.li_password_line_edit
-        )
+        linkedin_settings_layout.addRow("LinkedIn Password:", self.li_password_line_edit)
 
         self.li_auto_login_checkbox = qtw.QCheckBox("Automatically Login")
         self.li_auto_login_checkbox.setChecked(self.config["li_auto_login"])
-        linkedin_settings_layout.addRow(
-            "Automatically Login:", self.li_auto_login_checkbox
-        )
+        linkedin_settings_layout.addRow("Automatically Login:", self.li_auto_login_checkbox)
 
         # OpenAI settings
         ai_settings_groupbox = qtw.QGroupBox("OpenAI Settings")
@@ -166,9 +151,7 @@ class SettingsWidget(qtw.QWidget):
             initial_path=self.config["webdriver_path"],
             button_text="Select Webdriver Path",
         )
-        selenium_settings_layout.addRow(
-            "Webdriver Path:", self.webdriver_path_file_select
-        )
+        selenium_settings_layout.addRow("Webdriver Path:", self.webdriver_path_file_select)
 
         self.user_agent_line_edit = qtw.QLineEdit()
         self.user_agent_line_edit.setText(self.config["user_agent"])
@@ -183,7 +166,7 @@ class SettingsWidget(qtw.QWidget):
         self.update_button.clicked.connect(self.onUpdatedSettingsClicked)
         layout.addWidget(self.update_button)
 
-    def get_settings(self) -> dict[str, Optional[str | Path | bool]]:
+    def get_settings(self) -> Dict[str, Union[str, Path, bool, None]]:
         settings = {
             "resume_path": self.resume_path_file_select.get_file_path(),
             "default_cover_letter_path": self.default_cover_letter_path_file_select.get_file_path(),
@@ -206,22 +189,13 @@ class SettingsWidget(qtw.QWidget):
 
     def validate_paths(self, settings: Optional[dict] = None) -> bool:
         settings = settings or self.get_settings()
-        if (
-            isinstance((resume_path := settings.get("resume_path")), Path)
-            and not resume_path.exists()
-        ):
-            qtw.QMessageBox.critical(
-                self, "Invalid Resume Path", "Resume path does not exist."
-            )
+        if isinstance((resume_path := settings.get("resume_path")), Path) and not resume_path.exists():
+            qtw.QMessageBox.critical(self, "Invalid Resume Path", "Resume path does not exist.")
             return False
 
         if (
             isinstance(
-                (
-                    default_cover_letter_path := settings.get(
-                        "default_cover_letter_path"
-                    )
-                ),
+                (default_cover_letter_path := settings.get("default_cover_letter_path")),
                 Path,
             )
             and not default_cover_letter_path.exists()
@@ -233,9 +207,7 @@ class SettingsWidget(qtw.QWidget):
             )
             return False
 
-        if isinstance(
-            (cover_letter_output_dir := settings.get("cover_letter_output_dir")), Path
-        ):
+        if isinstance((cover_letter_output_dir := settings.get("cover_letter_output_dir")), Path):
             if not cover_letter_output_dir.exists():
                 cover_letter_output_dir.mkdir(parents=True)
             if not cover_letter_output_dir.is_dir():
@@ -252,7 +224,7 @@ class SettingsWidget(qtw.QWidget):
         settings = settings or self.get_settings()
         for key, value in settings.items():
             settings[key] = str(value) if isinstance(value, Path) else value
-        with open(self.config_path, "w") as f:
+        with open(self.config_path, "w", encoding="utf-8") as f:
             json_dump(settings, f, indent=4)
 
     @qtc.pyqtSlot()
