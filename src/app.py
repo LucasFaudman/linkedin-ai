@@ -257,7 +257,7 @@ class MainWindow(qtw.QMainWindow):
     def __init__(self, config_path: Path):
         super().__init__()
 
-        self.setWindowTitle("LinkedIn Automator")
+        self.setWindowTitle("LinkedIn AI")
         self.setGeometry(100, 100, 800, 800)
 
         self.central_tab_widget = qtw.QTabWidget()
@@ -285,15 +285,15 @@ class MainWindow(qtw.QMainWindow):
 
         self.show()
         if config_path.exists():
-            # Set up LinkedIn Automator with the settings from the config file if it exists
+            # Set up LinkedInAutomator with the settings from the config file if it exists
             self.setup_li_auto(self.settings_widget.get_settings())
         else:
             # Show a welcome message and get settings if the config file does not exist
             self.central_tab_widget.setCurrentIndex(3)
             qtw.QMessageBox.information(
                 self,
-                "Welcome to LinkedIn Automator",
-                "Welcome to LinkedIn Automator!\n\n"
+                "Welcome to LinkedIn AI",
+                "Welcome to LinkedIn AI!\n\n"
                 'Configure your settings\nthen click "Update Settings" to get started.\n\n'
                 "Required settings include:\n"
                 "1. OpenAI API Key\n"
@@ -302,7 +302,7 @@ class MainWindow(qtw.QMainWindow):
 
     def connect_li_automator_signals(self):
         if not self.li_auto:
-            raise ValueError("LinkedIn Automator not set up. Call setup_li_auto first.")
+            raise ValueError("LinkedInAutomator not set up. Call setup_li_auto first.")
 
         # Login
         self.login_dialog.loginAttempted.connect(self.li_auto.login)
@@ -402,9 +402,9 @@ class MainWindow(qtw.QMainWindow):
     @qtc.pyqtSlot()
     def connect_ai_signals(self):
         if not self.li_auto:
-            raise ValueError("LinkedIn Automator not set up. Call setup_li_auto first.")
+            raise ValueError("LinkedInAutomator not set up. Call setup_li_auto first.")
         if not self.li_auto.ai:
-            raise ValueError("LinkedIn Automator AI not set up. Call setup_li_auto and init_dbs first.")
+            raise ValueError("LinkedIn AI not set up. Call setup_li_auto and init_dbs first.")
 
         self.li_auto.ai.createdAssistant.connect(self.created_assistant)
         self.li_auto.ai.updatedAssistant.connect(self.updated_assistant)
@@ -458,7 +458,7 @@ class MainWindow(qtw.QMainWindow):
 
     def login(self, li_username: Optional[str], li_password: Optional[str], auto_login=False):
         if not self.li_auto:
-            raise ValueError("LinkedIn Automator not set up. Call setup_li_auto first.")
+            raise ValueError("LinkedInAutomator not set up. Call setup_li_auto first.")
 
         self.li_auto.goto_login()
         self.login_dialog.set_texts(li_username, li_password)
@@ -475,7 +475,7 @@ class MainWindow(qtw.QMainWindow):
     @qtc.pyqtSlot()
     def populate_ui(self):
         if not self.li_auto:
-            raise ValueError("LinkedIn Automator not set up. Call setup_li_auto first.")
+            raise ValueError("LinkedInAutomator not set up. Call setup_li_auto first.")
 
         self.central_tab_widget.setCurrentIndex(0)
         sleep(1)

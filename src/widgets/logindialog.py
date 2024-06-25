@@ -10,7 +10,7 @@ class LoginDialog(qtw.QDialog):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("LinkedIn Automator is starting up...")
+        self.setWindowTitle("LinkedIn AI is starting up...")
         self.setGeometry(100, 100, 400, 200)
         self.setModal(True)
 
@@ -39,7 +39,7 @@ class LoginDialog(qtw.QDialog):
         self.password_input.hide()
         self.login_button.hide()
 
-        self.overlay_text = qtw.QLabel("LinkedIn Automator is starting up...")
+        self.overlay_text = qtw.QLabel("LinkedIn AI is starting up...")
         self.overlay_text.show()
         self.overlay_button = qtw.QPushButton("Completed Captcha")
         self.overlay_button.hide()
