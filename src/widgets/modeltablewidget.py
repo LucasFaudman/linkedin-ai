@@ -1,7 +1,9 @@
+from typing import Optional, Union, Any
+
 from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtCore as qtc
 from pydantic import BaseModel
-from typing import Optional, Union, Any
+
 from .checkablecombobox import CheckableComboBox
 
 
@@ -26,7 +28,7 @@ class ModelTableWidget(qtw.QWidget):
         self,
         data_list: list,
         initial_filters: Optional[dict] = None,
-        resize_columns: Optional[list | bool] = None,
+        resize_columns: Optional[Union[list, bool]] = None,
     ) -> None:
         super().__init__()
 
@@ -93,9 +95,7 @@ class ModelTableWidget(qtw.QWidget):
         self.data_list = data_list
         # self.filters = self.get_filters_from_line_edits()
         self.line_edits = {}
-        self.filtered_data_list = self.get_filtered_data_list(
-            self.data_list, self.filters
-        )
+        self.filtered_data_list = self.get_filtered_data_list(self.data_list, self.filters)
 
         if not self.keys_to_show_initialized:
             self.reset_keys_to_show()
@@ -104,9 +104,7 @@ class ModelTableWidget(qtw.QWidget):
         keys = self.keys_to_show.currentData()
 
         # Set row and column count
-        self.table_widget.setRowCount(
-            len(self.filtered_data_list) + 1
-        )  # Add one for filter row
+        self.table_widget.setRowCount(len(self.filtered_data_list) + 1)  # Add one for filter row
         self.table_widget.setColumnCount(len(keys))
 
         # Set headers
@@ -133,11 +131,7 @@ class ModelTableWidget(qtw.QWidget):
             for col, key in enumerate(keys):
                 item_widget = qtw.QTableWidgetItem(str(item[key]))
                 if col == 0:  # Add checkbox to the first column
-                    item_widget.setFlags(
-                        item_widget.flags()
-                        | qtc.Qt.ItemIsEnabled
-                        | qtc.Qt.ItemIsUserCheckable
-                    )
+                    item_widget.setFlags(item_widget.flags() | qtc.Qt.ItemIsEnabled | qtc.Qt.ItemIsUserCheckable)
                     item_widget.setCheckState(qtc.Qt.Unchecked)
 
                 self.table_widget.setItem(row, col, item_widget)
@@ -164,10 +158,7 @@ class ModelTableWidget(qtw.QWidget):
         for item in data_list:
             item_dict = self.transform_item_for_table(item)
 
-            if all(
-                filter_text in str(item_dict[key])
-                for key, filter_text in filters.items()
-            ):
+            if all(filter_text in str(item_dict[key]) for key, filter_text in filters.items()):
                 filtered_data_list.append(item)
         return filtered_data_list
 
