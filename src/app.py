@@ -77,9 +77,7 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
     deletedQuestion = qtc.pyqtSignal(Question)
     answerNeeded = qtc.pyqtSignal(Question)
 
-    def __init__(
-        self, ask_when_answer_needed=False, verify_ai_answers=False, *args, **kwargs
-    ):
+    def __init__(self, ask_when_answer_needed=False, verify_ai_answers=False, *args, **kwargs):
         self.ask_when_answer_needed = ask_when_answer_needed
         self.verify_ai_answers = verify_ai_answers
         self.last_question = None
@@ -193,9 +191,7 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
         Emits signals when an answer is needed from the user and when the question is updated.
         """
         question = LinkedInAutomator.answer_job_question(self, question)
-        if (
-            not question.answer and self.ask_when_answer_needed
-        ) or self.verify_ai_answers:
+        if (not question.answer and self.ask_when_answer_needed) or self.verify_ai_answers:
             question = self.get_answer_from_user(question)
 
         self.updatedQuestion.emit(question)
@@ -207,9 +203,7 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
         Emits signal with the question and waits for the user to provide an answer.
         """
 
-        self.last_question = (
-            "AWAITING ANSWER"  # Set last_question to a placeholder value
-        )
+        self.last_question = "AWAITING ANSWER"  # Set last_question to a placeholder value
         self.answerNeeded.emit(
             question
         )  # Emit signal to ask user for answer (which creates a QuestionDialog in the main GUI thread)
@@ -276,9 +270,7 @@ class MainWindow(qtw.QMainWindow):
 
         self.central_tab_widget.addTab(self.search_widget, "Search and Apply for Jobs")
         self.central_tab_widget.addTab(self.job_app_db_view_widget, "View Job Database")
-        self.central_tab_widget.addTab(
-            self.question_db_view_widget, "View Question Database"
-        )
+        self.central_tab_widget.addTab(self.question_db_view_widget, "View Question Database")
         self.central_tab_widget.addTab(self.settings_widget, "Settings")
 
         self.login_dialog = LoginDialog(parent=self)
@@ -385,9 +377,7 @@ class MainWindow(qtw.QMainWindow):
         # Request jobs from the database
         self.job_app_db_view_widget.getJobsFromDB.connect(self.li_auto.get_jobs_from_db)
         # Populate the jobs table with the jobs from the database
-        self.li_auto.getJobsFromDBResult.connect(
-            self.job_app_db_view_widget.update_jobs
-        )
+        self.li_auto.getJobsFromDBResult.connect(self.job_app_db_view_widget.update_jobs)
         # Apply to selected jobs in the database
         self.job_app_db_view_widget.applyJobs.connect(self.li_auto.apply_to_jobs)
         self.job_app_db_view_widget.applyJobs.connect(self.begin_applying)
@@ -398,19 +388,13 @@ class MainWindow(qtw.QMainWindow):
         self.job_app_db_view_widget.openJobs.connect(self.li_auto.open_jobs)
 
         # Request questions from the database
-        self.question_db_view_widget.getQuestionsFromDB.connect(
-            self.li_auto.get_questions_from_db
-        )
+        self.question_db_view_widget.getQuestionsFromDB.connect(self.li_auto.get_questions_from_db)
         # Populate the questions table with the questions from the database
-        self.li_auto.getQuestionsFromDBResult.connect(
-            self.question_db_view_widget.update_questions
-        )
+        self.li_auto.getQuestionsFromDBResult.connect(self.question_db_view_widget.update_questions)
         # Edit selected questions in the database
         self.question_db_view_widget.editQuestions.connect(self.li_auto.edit_questions)
         # Delete selected questions in the database
-        self.question_db_view_widget.deleteQuestions.connect(
-            self.li_auto.delete_questions
-        )
+        self.question_db_view_widget.deleteQuestions.connect(self.li_auto.delete_questions)
         self.li_auto.deletedQuestion.connect(self.deleted_question)
 
         self.li_auto.aiAndDBsInitialized.connect(self.connect_ai_signals)
@@ -420,9 +404,7 @@ class MainWindow(qtw.QMainWindow):
         if not self.li_auto:
             raise ValueError("LinkedIn Automator not set up. Call setup_li_auto first.")
         if not self.li_auto.ai:
-            raise ValueError(
-                "LinkedIn Automator AI not set up. Call setup_li_auto and init_dbs first."
-            )
+            raise ValueError("LinkedIn Automator AI not set up. Call setup_li_auto and init_dbs first.")
 
         self.li_auto.ai.createdAssistant.connect(self.created_assistant)
         self.li_auto.ai.updatedAssistant.connect(self.updated_assistant)
@@ -461,9 +443,7 @@ class MainWindow(qtw.QMainWindow):
 
         self.connect_li_automator_signals()
         self.li_auto.init_scraper()
-        self.login(
-            self.settings["li_username"], self.settings["li_password"], auto_login
-        )
+        self.login(self.settings["li_username"], self.settings["li_password"], auto_login)
 
     def teardown_li_auto_thread_if_running(self):
         try:
@@ -476,9 +456,7 @@ class MainWindow(qtw.QMainWindow):
             if self.li_thread:
                 self.li_thread.quit()
 
-    def login(
-        self, li_username: Optional[str], li_password: Optional[str], auto_login=False
-    ):
+    def login(self, li_username: Optional[str], li_password: Optional[str], auto_login=False):
         if not self.li_auto:
             raise ValueError("LinkedIn Automator not set up. Call setup_li_auto first.")
 
@@ -543,9 +521,7 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(Job)
     def updated_job(self, job):
-        self.update_status(
-            f"Updated Job ({job.id}): {job.title} at {job.company.name}. Status: {job.status}"
-        )
+        self.update_status(f"Updated Job ({job.id}): {job.title} at {job.company.name}. Status: {job.status}")
 
     @qtc.pyqtSlot(list)
     def search_complete(self, jobs):
@@ -557,9 +533,7 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(Job)
     def applied_job(self, job):
-        self.update_status(
-            f"Applied to Job ({job.id}): {job.title} at {job.company.name}"
-        )
+        self.update_status(f"Applied to Job ({job.id}): {job.title} at {job.company.name}")
         self.search_widget.jobs_table_widget.remove_item(job)
 
     @qtc.pyqtSlot(int, int)
@@ -578,9 +552,7 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(Question)
     def updated_question(self, question):
-        self.update_status(
-            f"Answered question: {question.question}. Answer: {question.answer}"
-        )
+        self.update_status(f"Answered question: {question.question}. Answer: {question.answer}")
 
     @qtc.pyqtSlot(Question)
     def deleted_question(self, question):
@@ -620,9 +592,7 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(Run)
     def run_completed(self, run):
-        self.update_status(
-            f"Run {run.id} completed successfully with status: {run.status}"
-        )
+        self.update_status(f"Run {run.id} completed successfully with status: {run.status}")
 
     @qtc.pyqtSlot(str, dict)
     def new_tool_call(self, tool_name, arguments):
@@ -630,9 +600,7 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(str, dict, object)
     def tool_outputs_submitted(self, tool_name, arguments, outputs):
-        self.update_status(
-            f"Submitted tool {tool_name} outputs to AI: {outputs} for arguments: {arguments}"
-        )
+        self.update_status(f"Submitted tool {tool_name} outputs to AI: {outputs} for arguments: {arguments}")
 
     @qtc.pyqtSlot(int)
     def waiting_for_response(self, sleep_interval):
@@ -649,9 +617,7 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(Question)
     def answered_question(self, question):
-        self.update_status(
-            f"Answered AI question: {question.question} with answer: {question.answer}"
-        )
+        self.update_status(f"Answered AI question: {question.question} with answer: {question.answer}")
 
     @qtc.pyqtSlot(Question)
     def answer_unknown(self, question):
@@ -659,15 +625,11 @@ class MainWindow(qtw.QMainWindow):
 
     @qtc.pyqtSlot(Job)
     def writing_cover_letter(self, job):
-        self.update_status(
-            f"Writing cover letter for job: {job.title} at {job.company.name}"
-        )
+        self.update_status(f"Writing cover letter for job: {job.title} at {job.company.name}")
 
     @qtc.pyqtSlot(Job, str)
     def wrote_cover_letter(self, job, cover_letter_text):
-        self.update_status(
-            f"Wrote cover letter for job: {job.title} at {job.company.name}: {cover_letter_text}"
-        )
+        self.update_status(f"Wrote cover letter for job: {job.title} at {job.company.name}: {cover_letter_text}")
 
     def quit(self):
         self.teardown_li_auto_thread_if_running()
@@ -676,7 +638,7 @@ class MainWindow(qtw.QMainWindow):
         exit(0)
 
 
-if __name__ == "__main__":
+def main():
     parser = ArgumentParser()
     parser.add_argument(
         "--config-path",
@@ -689,3 +651,7 @@ if __name__ == "__main__":
     app = qtw.QApplication([])
     window = MainWindow(config_path=args.config_path)
     app.exec()
+
+
+if __name__ == "__main__":
+    main()
