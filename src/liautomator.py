@@ -155,7 +155,7 @@ class LinkedInAutomator:
         if self.scraper.current_url != linkendin_login_url:
             self.scraper.goto(linkendin_login_url, sleep_secs=2)
 
-    def login(self, li_username: Optional[str] = None, li_password: Optional[str] = None):
+    def login(self, li_username: Optional[str] = None, li_password: Optional[str] = None) -> bool:
         """Logs into LinkedIn using the provided credentials or the ones provided in the constructor."""
         # Use the provided credentials or the ones provided in the constructor
         li_username = li_username or self.li_username
