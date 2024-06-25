@@ -77,7 +77,7 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
     deletedQuestion = qtc.pyqtSignal(Question)
     answerNeeded = qtc.pyqtSignal(Question)
 
-    def __init__(self, ask_when_answer_needed=False, verify_ai_answers=False, *args, **kwargs):
+    def __init__(self, *args, ask_when_answer_needed=False, verify_ai_answers=False, **kwargs):
         self.ask_when_answer_needed = ask_when_answer_needed
         self.verify_ai_answers = verify_ai_answers
         self.last_question = None
@@ -102,15 +102,15 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
         self.loginReady.emit()
 
     @qtc.pyqtSlot(str, str)
-    def login(self, username, password):
+    def login(self, li_username, li_password):
         """Login to LinkedIn with the given username and password. Emits signal with login result."""
-        result = LinkedInAutomator.login(self, username, password)
+        result = LinkedInAutomator.login(self, li_username, li_password)
         self.loginResult.emit(result)
 
     @qtc.pyqtSlot(str)
-    def get_filter_options(self, job_title: str):
+    def get_filter_options(self, search_term: str):
         """Get filter options for a job search. Emits signals when starting and with the filter options."""
-        filters = LinkedInAutomator.get_filter_options(self, job_title)
+        filters = LinkedInAutomator.get_filter_options(self, search_term)
         self.getFilterOptionsResult.emit(filters)
 
     @qtc.pyqtSlot()
@@ -634,8 +634,6 @@ class MainWindow(qtw.QMainWindow):
     def quit(self):
         self.teardown_li_auto_thread_if_running()
         self.close()
-        app.exit()
-        exit(0)
 
 
 def main():
@@ -650,7 +648,8 @@ def main():
 
     app = qtw.QApplication([])
     window = MainWindow(config_path=args.config_path)
-    app.exec()
+    exit_code = app.exec()
+    app.exit(exit_code)
 
 
 if __name__ == "__main__":

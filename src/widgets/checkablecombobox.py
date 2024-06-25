@@ -43,8 +43,8 @@ class CheckableComboBox(qtw.QComboBox):
         self.updateText()
         super().resizeEvent(event)
 
-    def eventFilter(self, object, event):
-        if object == self.lineEdit():
+    def eventFilter(self, obj, event):
+        if obj == self.lineEdit():
             if event.type() == qtc.QEvent.MouseButtonRelease:
                 if self.closeOnLineEditClick:
                     self.hidePopup()
@@ -53,7 +53,7 @@ class CheckableComboBox(qtw.QComboBox):
                 return True
             return False
 
-        if object == self.view().viewport():
+        if obj == self.view().viewport():
             if event.type() == qtc.QEvent.MouseButtonRelease:
                 index = self.view().indexAt(event.pos())
                 item = self.model().item(index.row())
@@ -92,9 +92,7 @@ class CheckableComboBox(qtw.QComboBox):
         # Compute elided text (with "...")
 
         metrics = qtg.QFontMetrics(self.lineEdit().font())
-        elidedText = metrics.elidedText(
-            text, qtc.Qt.ElideRight, self.lineEdit().width()
-        )
+        elidedText = metrics.elidedText(text, qtc.Qt.ElideRight, self.lineEdit().width())
         self.lineEdit().setText(elidedText)
 
     def addItem(self, text, userData=None, checked=False):
@@ -105,9 +103,7 @@ class CheckableComboBox(qtw.QComboBox):
         else:
             item.setData(userData)
         item.setFlags(qtc.Qt.ItemIsEnabled | qtc.Qt.ItemIsUserCheckable)
-        item.setData(
-            qtc.Qt.Checked if checked else qtc.Qt.Unchecked, qtc.Qt.CheckStateRole
-        )
+        item.setData(qtc.Qt.Checked if checked else qtc.Qt.Unchecked, qtc.Qt.CheckStateRole)
         self.model().appendRow(item)
 
     def addItems(self, texts, datalist=None, checked=False):

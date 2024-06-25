@@ -1,2 +1,5 @@
+[MASTER]
+ignore-patterns=src/core/sqldantic.py
+
 [MESSAGES CONTROL]
-disable=C0114,C0115,C0116,C0301
+disable=C0114,C0115,C0116,C0301,R0902,R0903,R0904,W0718,C0103

@@ -1,4 +1,3 @@
-from .dynamicsignalqobject import DynamicSignalQObject
 from .checkablecombobox import CheckableComboBox
 from .comboboxwithupdatebuttons import ComboBoxWithUpdateButtons
 from .dynamicsignalqobject import DynamicSignalQObject

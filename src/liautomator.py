@@ -732,14 +732,14 @@ class LinkedInAutomator:
 
     def _try_func_on_jobs(
         self,
-        jobs_iter: Iterable[Job],
+        jobs: Iterable[Job],
         func: Callable[[Job], Job],
         new_tab=False,
         close_tab_after=False,
     ) -> Iterator[Job]:
         """Tries to preform a function to each job in the provided iterable and yields the job if successful."""
         initial_tab = self.scraper.current_tab
-        for job in jobs_iter:
+        for job in jobs:
             print(f"Trying {func} on {job.id}: {job.title} at {job.company.name} in {job.location}")
             try:
                 if new_tab:
@@ -760,17 +760,17 @@ class LinkedInAutomator:
                 except Exception as e:
                     print(f"Failed to switch back to initial tab. Error: {e}")
 
-    def apply_to_jobs(self, jobs_iter: Iterable[Job]) -> Iterator[Job]:
+    def apply_to_jobs(self, jobs: Iterable[Job]) -> Iterator[Job]:
         """Applies to each job in the provided iterable"""
-        return self._try_func_on_jobs(jobs_iter, self.apply_to_job)
+        return self._try_func_on_jobs(jobs, self.apply_to_job)
 
-    def update_jobs(self, jobs_iter: Iterable[Job]) -> Iterator[Job]:
+    def update_jobs(self, jobs: Iterable[Job]) -> Iterator[Job]:
         """Updates/re-scrapes each job in the provided iterable"""
-        return self._try_func_on_jobs(jobs_iter, self.update_job)
+        return self._try_func_on_jobs(jobs, self.update_job)
 
-    def open_jobs(self, jobs_iter: Iterable[Job]) -> Iterator[Job]:
+    def open_jobs(self, jobs: Iterable[Job]) -> Iterator[Job]:
         """Opens a new tab with the LinkedIn job page for each job in the provided iterable"""
-        return self._try_func_on_jobs(jobs_iter, self.goto_job, new_tab=True, close_tab_after=False)
+        return self._try_func_on_jobs(jobs, self.goto_job, new_tab=True, close_tab_after=False)
 
     def answer_job_question(self, question: Question) -> Question:
         """Asks the AI or user to answer a job application question."""
