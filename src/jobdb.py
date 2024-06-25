@@ -14,12 +14,10 @@ class JobAppDB(BaseDB):
         return set(row[0] for row in self.cursor.fetchall())
 
     @staticmethod
-    def select_questions_or_answer_like_keyword(
-        sqldantic_schema: SQLDanticSchema, *args
-    ):
+    def select_questions_or_answer_like_keyword(sqldantic_schema: SQLDanticSchema, *args):
         """A select query factory that returns a query to select questions or answers that contain any of the given keywords."""
-        condition_clause = " OR ".join(f"question LIKE ?" for arg in args)
-        condition_clause += " OR " + " OR ".join(f"answer LIKE ?" for arg in args)
+        condition_clause = " OR ".join("question LIKE ?" for arg in args)
+        condition_clause += " OR " + " OR ".join("answer LIKE ?" for arg in args)
         values = tuple(f"%{arg}%" for arg in args) * 2
         query = f"SELECT * FROM {sqldantic_schema.table_name} WHERE {condition_clause}"
         return query, values
