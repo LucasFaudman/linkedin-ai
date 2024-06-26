@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtCore as qtc
-from models import Question
+from ..models import Question
 
 
 class QuestionDialog(qtw.QDialog):

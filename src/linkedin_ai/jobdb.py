@@ -1,6 +1,6 @@
 from typing import Set, Tuple
-from core.sqldantic import BaseDB, SQLDanticSchema
-from models import Job, Question
+from .core.sqldantic import BaseDB, SQLDanticSchema
+from .models import Job, Question
 
 
 class JobAppDB(BaseDB):

@@ -2,12 +2,11 @@ from ast import literal_eval as ast_literal_eval
 from pathlib import Path
 from json import loads as json_loads, dumps as json_dumps
 from time import sleep
-from typing import Union, Optional, Dict, Tuple, Callable
+from typing import Optional, Dict, Tuple, Callable
 
 from openai import OpenAI, OpenAIError, BadRequestError
 from openai.types.beta import Assistant, Thread
 from openai.types.beta.threads import Message, Run, Text
-from openai.types.beta.threads.message_content import MessageContent
 from openai.types.beta.threads.run import LastError
 from openai.types.beta.threads.runs import RunStep
 from openai.types.beta.threads.runs.message_creation_step_details import (
@@ -22,9 +21,7 @@ from openai.types.beta.threads.runs.function_tool_call import FunctionToolCall, 
 from openai.types.beta.threads.runs.code_interpreter_tool_call import (
     CodeInterpreterToolCall,
 )
-from openai.types.beta.threads.runs.retrieval_tool_call import RetrievalToolCall
 from openai.types.beta.code_interpreter_tool import CodeInterpreterTool
-from openai.types.beta.retrieval_tool import RetrievalTool
 from openai.types.beta.function_tool import FunctionTool
 
 from tiktoken import get_encoding, encoding_for_model
@@ -40,8 +37,6 @@ class OpenAIDB(BaseDB):
         ImageFileContentBlock,
         CodeInterpreterTool,
         CodeInterpreterToolCall,
-        RetrievalTool,
-        RetrievalToolCall,
         Function,
         FunctionTool,
         FunctionToolCall,

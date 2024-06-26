@@ -41,6 +41,4 @@ if __name__ == "__main__":
 
     dsqo.dynamicSignal.connect(someSlotOrFunction)
 
-    dsqo.dynamicSignal.emit(
-        "This signal was dynamically added to this QObject instance."
-    )
+    dsqo.dynamicSignal.emit("This signal was dynamically added to this QObject instance.")

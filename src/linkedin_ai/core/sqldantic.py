@@ -7,7 +7,6 @@ from typing import (
     Any,
     Type,
     TypeVar,
-    TypeAlias,
     Union,
     Annotated,
     Optional,
@@ -15,10 +14,8 @@ from typing import (
     Callable,
     Iterator,
     Literal,
-    LiteralString,
     Tuple,
     List,
-    Set,
     Sequence,
     Collection,
     Dict,
@@ -83,18 +80,12 @@ SQLDANTIC_TYPE_MAP: SQLDanticTypeMap = {
 }
 
 # Represents a field in a model with its type and item type (if it is a sequence)
-SQLDanticFieldType = Tuple[
-    SQLDanticType, Optional[Union[SQLDanticType, Tuple[SQLDanticType, SQLDanticType]]]
-]
+SQLDanticFieldType = Tuple[SQLDanticType, Optional[Union[SQLDanticType, Tuple[SQLDanticType, SQLDanticType]]]]
 # Fields of a model mapped to their SQLDatnicField
 SQLDanticFieldTypes = Dict[str, SQLDanticFieldType]
 
-OptionalArgs = Optional[
-    Collection[Any]
-]  # Optional arguments to be passed to functions below
-TableNameGetter = Union[
-    Callable, Sequence[Callable]
-]  # Function or list of functions to derive table name from model
+OptionalArgs = Optional[Collection[Any]]  # Optional arguments to be passed to functions below
+TableNameGetter = Union[Callable, Sequence[Callable]]  # Function or list of functions to derive table name from model
 TableNameTransformer = Union[
     Callable, Sequence[Callable]
 ]  # Function or list of functions to transform table name (e.g. lowercase, pluralize, add some prefix, etc.)
@@ -116,9 +107,7 @@ def get_table_name_from_schema(model: BaseModelType, *args) -> Optional[str]:
             return cls.__name__
         elif (config := schema.get("config")) and (title := config.get("title")):
             return title
-        elif (subschema := schema.get("schema")) and (
-            model_name := subschema.get("model_name")
-        ):
+        elif (subschema := schema.get("schema")) and (model_name := subschema.get("model_name")):
             return model_name
 
 
@@ -138,9 +127,7 @@ def get_table_name_from__mro__(model: BaseModelType, depth: int = 1) -> str:
     return parent_at_depth.__name__
 
 
-def get_table_name_from_class_attr(
-    model: BaseModelType, table_name_attr: str = "table_name"
-) -> str:
+def get_table_name_from_class_attr(model: BaseModelType, table_name_attr: str = "table_name") -> str:
     return getattr(model, table_name_attr)
 
 
@@ -159,9 +146,7 @@ def get_table_name(
         table_name_getter = (table_name_getter,)
     for getter in table_name_getter:
         try:
-            if table_name := _call_with_optional_args(
-                getter, model, table_name_getter_args
-            ):
+            if table_name := _call_with_optional_args(getter, model, table_name_getter_args):
                 return table_name
         except Exception as e:
             print(e)
@@ -182,9 +167,7 @@ def transform_table_name(
     if not isinstance(table_name_transformer, Collection):
         table_name_transformer = (table_name_transformer,)
     for transformer in table_name_transformer:
-        table_name = _call_with_optional_args(
-            transformer, table_name, table_name_transformer_args
-        )
+        table_name = _call_with_optional_args(transformer, table_name, table_name_transformer_args)
     return table_name
 
 
@@ -227,9 +210,7 @@ def get_sqldantic_type(
         return type(annotation), None
 
     origin = get_origin(annotation)
-    if origin in (Annotated, Union) or isinstance(
-        type(origin), _SpecialForm
-    ):  # is subclass?
+    if origin in (Annotated, Union) or isinstance(type(origin), _SpecialForm):  # is subclass?
         for arg in get_args(annotation):
             if arg is None:
                 continue
@@ -286,21 +267,13 @@ class SQLDanticSchema:
         else:
             self.model: Type[_BaseModel] = model
 
-        table_name = get_table_name(
-            self.model, table_name_getter, table_name_getter_args
-        )
+        table_name = get_table_name(self.model, table_name_getter, table_name_getter_args)
         if not table_name:
             raise ValueError("Could not derive table name. Tried: ", table_name_getter)
 
-        self.table_name = transform_table_name(
-            table_name, table_name_transformer, table_name_transformer_args
-        )
-        self.primary_key = get_primary_key(
-            self.model, primary_key_getter, primary_key_getter_args
-        )
-        self.sqldantic_fields = get_model_sqldantic_fields(
-            self.model, sqldantic_type_map
-        )
+        self.table_name = transform_table_name(table_name, table_name_transformer, table_name_transformer_args)
+        self.primary_key = get_primary_key(self.model, primary_key_getter, primary_key_getter_args)
+        self.sqldantic_fields = get_model_sqldantic_fields(self.model, sqldantic_type_map)
 
 
 def catch_sqlite_errors(func):
@@ -311,14 +284,10 @@ def catch_sqlite_errors(func):
         except SqliteError as e:
             if instance.ignore_sqlite_errors and (
                 instance.ignore_sqlite_errors is True
-                or type(e)
-                in instance.ignore_sqlite_errors  # So sqlite exceptions classes can passed directly
+                or type(e) in instance.ignore_sqlite_errors  # So sqlite exceptions classes can passed directly
                 or (
                     (error_str := str(e))
-                    and any(
-                        error_str.startswith(ignored_error)
-                        for ignored_error in instance.ignore_sqlite_errors
-                    )
+                    and any(error_str.startswith(ignored_error) for ignored_error in instance.ignore_sqlite_errors)
                 )
             ):
                 # print(e, args, kwargs)
@@ -375,9 +344,7 @@ class BaseDB:
         if self.connected:
             self.conn.close()
 
-    def get_sqldantic_schema(
-        self, model: Union[_BaseModel, Type[_BaseModel]]
-    ) -> SQLDanticSchema:
+    def get_sqldantic_schema(self, model: Union[_BaseModel, Type[_BaseModel]]) -> SQLDanticSchema:
         return SQLDanticSchema(
             model=model,
             sqldantic_type_map=self.sqldantic_type_map,
@@ -414,9 +381,7 @@ class BaseDB:
             sqldantic_type, item_type = sqldantic_type_and_item_type
 
             if is_base_model(sqldantic_type):
-                sub_schema = yield from self.recusive_create_table_queries(
-                    sqldantic_type, if_not_exists
-                )
+                sub_schema = yield from self.recusive_create_table_queries(sqldantic_type, if_not_exists)
 
                 column_defs.append(f"{field_name} TEXT")
                 foreign_keys.append(
@@ -425,21 +390,15 @@ class BaseDB:
 
             elif sqldantic_type == "SEQUENCE":
                 if is_base_model(item_type):
-                    item_schema = yield from self.recusive_create_table_queries(
-                        item_type, if_not_exists
-                    )
+                    item_schema = yield from self.recusive_create_table_queries(item_type, if_not_exists)
                 column_defs.append(f"{field_name} TEXT")
 
             elif sqldantic_type == "MAPPING" and isinstance(item_type, tuple):
                 key_type, val_type = item_type
                 if is_base_model(key_type):
-                    key_schema = yield from self.recusive_create_table_queries(
-                        key_type, if_not_exists
-                    )
+                    key_schema = yield from self.recusive_create_table_queries(key_type, if_not_exists)
                 if is_base_model(val_type):
-                    val_schema = yield from self.recusive_create_table_queries(
-                        val_type, if_not_exists
-                    )
+                    val_schema = yield from self.recusive_create_table_queries(val_type, if_not_exists)
                 column_defs.append(f"{field_name} TEXT")
             else:
                 column_defs.append(f"{field_name} {sqldantic_type}")
@@ -452,23 +411,17 @@ class BaseDB:
         yield (query, ())
         return sqldantic_schema
 
-    def create_tables_from_model(
-        self, model: BaseModelInstanceOrType, if_not_exists: bool = True
-    ) -> None:
+    def create_tables_from_model(self, model: BaseModelInstanceOrType, if_not_exists: bool = True) -> None:
         query_gen = self.recusive_create_table_queries(model, if_not_exists)
         self.execute_queries(query_gen)
 
-    def create_tables_from_models(
-        self, *models: BaseModelInstanceOrType, if_not_exists: bool = True
-    ) -> None:
+    def create_tables_from_models(self, *models: BaseModelInstanceOrType, if_not_exists: bool = True) -> None:
         for model in models:
             query_gen = self.recusive_create_table_queries(model, if_not_exists)
             self.execute_queries(query_gen)
 
     @catch_sqlite_errors
-    def recursive_modify_table_queries(
-        self, model: BaseModel, query_facory: Callable
-    ) -> Iterator[Query]:
+    def recursive_modify_table_queries(self, model: BaseModel, query_facory: Callable) -> Iterator[Query]:
         sqldantic_schema = self.get_sqldantic_schema(model)
 
         model_dict = {}
@@ -483,31 +436,25 @@ class BaseDB:
                 model_dict[field_name] = None
 
             elif is_base_model(sqldantic_type):
-                value_schema = yield from self.recursive_modify_table_queries(
-                    value, query_facory
-                )
+                value_schema = yield from self.recursive_modify_table_queries(value, query_facory)
                 model_dict[field_name] = str(getattr(value, value_schema.primary_key))
 
             elif sqldantic_type == "SEQUENCE":
                 if is_base_model(item_type):
                     sequence_values = []
                     for item in value:
-                        item_schema = yield from self.recursive_modify_table_queries(
-                            item, query_facory
-                        )
+                        item_schema = yield from self.recursive_modify_table_queries(item, query_facory)
                         sequence_values.append(getattr(item, item_schema.primary_key))
 
                     model_dict[field_name] = self.SEQUENCE_SEPARATOR.join(
-                        str(item) if not isinstance(item, str) else item
-                        for item in sequence_values
+                        str(item) if not isinstance(item, str) else item for item in sequence_values
                     )
 
                 elif value is None:
                     model_dict[field_name] = None
                 else:
                     model_dict[field_name] = self.SEQUENCE_SEPARATOR.join(
-                        str(item) if not isinstance(item, str) else item
-                        for item in value
+                        str(item) if not isinstance(item, str) else item for item in value
                     )
 
             elif sqldantic_type == "MAPPING":
@@ -516,9 +463,7 @@ class BaseDB:
                 if is_base_model(val_type):
                     mapping = {}
                     for key, val in value.items():
-                        val_schema = yield from self.recursive_modify_table_queries(
-                            val, query_facory
-                        )
+                        val_schema = yield from self.recursive_modify_table_queries(val, query_facory)
                         mapping[key] = getattr(val, val_schema.primary_key)
                     model_dict[field_name] = json.dumps(mapping)
                 else:
@@ -526,9 +471,7 @@ class BaseDB:
 
             elif sqldantic_type == "UNKNOWN":
                 if is_base_model(item_type):
-                    value_schema = yield from self.recursive_modify_table_queries(
-                        value, query_facory
-                    )
+                    value_schema = yield from self.recursive_modify_table_queries(value, query_facory)
                     model_dict[field_name] = getattr(value, value_schema.primary_key)
                 else:
                     model_dict[field_name] = json.dumps(value)
@@ -541,9 +484,7 @@ class BaseDB:
         return sqldantic_schema
 
     @staticmethod
-    def insert_query_factory(
-        sqldantic_schema: SQLDanticSchema, model_dict: dict
-    ) -> Query:
+    def insert_query_factory(sqldantic_schema: SQLDanticSchema, model_dict: dict) -> Query:
         columns = ", ".join(model_dict)
         placeholders = ", ".join("?" for _ in model_dict)
         values = tuple(model_dict.values())
@@ -551,9 +492,7 @@ class BaseDB:
         return query, values
 
     def insert_model(self, model: BaseModel) -> None:
-        query_gen = self.recursive_modify_table_queries(
-            model, self.insert_query_factory
-        )
+        query_gen = self.recursive_modify_table_queries(model, self.insert_query_factory)
         self.execute_queries(query_gen)
 
     def insert_models(self, *models: BaseModel) -> None:
@@ -561,9 +500,7 @@ class BaseDB:
             self.insert_model(model)
 
     @staticmethod
-    def update_query_factory(
-        sqldantic_schema: SQLDanticSchema, model_dict: dict
-    ) -> Query:
+    def update_query_factory(sqldantic_schema: SQLDanticSchema, model_dict: dict) -> Query:
         primary_key_value = model_dict.pop(sqldantic_schema.primary_key)
         set_clause = ", ".join(f"{key} = ?" for key in model_dict)
         condition_clause = f"{sqldantic_schema.primary_key} = ?"
@@ -572,9 +509,7 @@ class BaseDB:
         return query, values
 
     def update_model(self, model: BaseModel) -> None:
-        query_gen = self.recursive_modify_table_queries(
-            model, self.update_query_factory
-        )
+        query_gen = self.recursive_modify_table_queries(model, self.update_query_factory)
         self.execute_queries(query_gen)
 
     def update_models(self, *models: BaseModel) -> None:
@@ -582,9 +517,7 @@ class BaseDB:
             self.update_model(model)
 
     @staticmethod
-    def delete_query_factory(
-        sqldantic_schema: SQLDanticSchema, model_dict: dict
-    ) -> Query:
+    def delete_query_factory(sqldantic_schema: SQLDanticSchema, model_dict: dict) -> Query:
         primary_key_value = model_dict[sqldantic_schema.primary_key]
         condition_clause = f"{sqldantic_schema.primary_key} = ?"
         values = (primary_key_value,)
@@ -592,9 +525,7 @@ class BaseDB:
         return query, values
 
     def recursively_delete_model(self, model: BaseModel) -> None:
-        query_gen = self.recursive_modify_table_queries(
-            model, self.delete_query_factory
-        )
+        query_gen = self.recursive_modify_table_queries(model, self.delete_query_factory)
         self.execute_queries(query_gen)
 
     def delete_model(self, model: BaseModel) -> None:
@@ -605,14 +536,10 @@ class BaseDB:
         self.execute_queries(((query, values),))
 
     @staticmethod
-    def primary_key_select_query_factory(
-        sqldantic_schema: SQLDanticSchema, *args, **kwargs
-    ) -> Query:
+    def primary_key_select_query_factory(sqldantic_schema: SQLDanticSchema, *args, **kwargs) -> Query:
         if args:
             placeholder = ", ".join("?" for _ in args)
-            condition_clause = (
-                f"WHERE {sqldantic_schema.primary_key} IN ({placeholder})"
-            )
+            condition_clause = f"WHERE {sqldantic_schema.primary_key} IN ({placeholder})"
         else:
             condition_clause = ""
         values = args
@@ -620,9 +547,7 @@ class BaseDB:
         return query, values
 
     @staticmethod
-    def by_keys_select_query_factory(
-        sqldantic_schema: SQLDanticSchema, *args, **kwargs
-    ) -> Query:
+    def by_keys_select_query_factory(sqldantic_schema: SQLDanticSchema, *args, **kwargs) -> Query:
         contitions = []
         values = []
         for key, value in kwargs.items():
@@ -695,9 +620,7 @@ class BaseDB:
                 elif sqldantic_type == "MAPPING" and isinstance(item_type, tuple):
                     mapping = json.loads(value)
                     key_type, val_type = item_type
-                    if (key_is_basemodel := is_base_model(val_type)) or (
-                        val_is_basemodel := is_base_model(val_type)
-                    ):
+                    if (key_is_basemodel := is_base_model(val_type)) or (val_is_basemodel := is_base_model(val_type)):
                         if key_is_basemodel:
                             keys_gen = self.iter_models(
                                 key_type,
@@ -761,9 +684,7 @@ class BaseDB:
     ) -> List[_BaseModel]:
         return self.get_models(model, *primary_keys)
 
-    def get_models_by_id(
-        self, model: Union[_BaseModel, Type[_BaseModel]], *ids: str
-    ) -> List[_BaseModel]:
+    def get_models_by_id(self, model: Union[_BaseModel, Type[_BaseModel]], *ids: str) -> List[_BaseModel]:
         return self.get_models(model, *ids)
 
     def get_model(
@@ -790,7 +711,5 @@ class BaseDB:
     ) -> Optional[_BaseModel]:
         return self.get_model(model, *primary_keys)
 
-    def get_model_by_id(
-        self, model: Union[_BaseModel, Type[_BaseModel]], *ids: str
-    ) -> Optional[_BaseModel]:
+    def get_model_by_id(self, model: Union[_BaseModel, Type[_BaseModel]], *ids: str) -> Optional[_BaseModel]:
         return self.get_model(model, *ids)

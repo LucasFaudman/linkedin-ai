@@ -6,7 +6,7 @@ with open("README.md", mode="r", encoding="utf-8") as f:
 
 setup(
     name="linkedin-ai",
-    version="0.6.2",
+    version="0.6.3",
     use_scm_version=True,
     setup_requires=["setuptools_scm>=8", "wheel"],
     description="Automate searching for jobs and submitting applications on LinkedIn using OpenAI",
@@ -57,7 +57,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "linkedin-ai = app:main",
+            "linkedin-ai = linkedin_ai.app:main",
         ],
     },
 )

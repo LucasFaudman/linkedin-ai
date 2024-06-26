@@ -4,9 +4,9 @@ from time import sleep
 from datetime import datetime, timedelta
 
 from souperscraper import SouperScraper, Keys, WebElement
-from jobdb import JobAppDB
-from jobai import JobAppAI
-from models import Job, Company, HiringManager, Question
+from .jobdb import JobAppDB
+from .jobai import JobAppAI
+from .models import Job, Company, HiringManager, Question
 
 
 def parse_relative_date(date_str: str) -> datetime:

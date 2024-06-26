@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import datetime
 from docx import Document
 from PyQt5 import QtCore as qtc
-from core.aimanager import (
+from .core.aimanager import (
     OpenAIManager,
     Assistant,
     Thread,
@@ -13,8 +13,8 @@ from core.aimanager import (
     sleep,
     json_loads,
 )
-from jobdb import JobAppDB
-from models import Question, Job
+from .jobdb import JobAppDB
+from .models import Question, Job
 
 
 class OpenAIManagerQObject(OpenAIManager, qtc.QObject):

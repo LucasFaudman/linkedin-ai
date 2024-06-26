@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 from PyQt5 import QtCore as qtc
 from PyQt5 import QtWidgets as qtw
 
-from widgets import (
+from .widgets import (
     LoginDialog,
     QuestionDialog,
     SearchAndApplyWidget,
@@ -14,9 +14,9 @@ from widgets import (
     QuestionDBInteractionWidget,
     SettingsWidget,
 )
-from liautomator import LinkedInAutomator, sleep
-from models import Job, Question
-from core.aimanager import Assistant, Thread, Run, Message
+from .liautomator import LinkedInAutomator, sleep
+from .models import Job, Question
+from .core.aimanager import Assistant, Thread, Run, Message
 
 
 def thread_safe_dbs(func):
@@ -643,7 +643,7 @@ def main():
         "--config-path",
         "-c",
         type=Path,
-        default=Path("./linkedin-automator-config.json"),
+        default=Path("./linkedin-ai-config.json"),
     )
     args = parser.parse_args()
 
