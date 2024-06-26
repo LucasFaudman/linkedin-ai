@@ -97,7 +97,7 @@ linkedin-ai
 
 To specify a custom config path use the `--config/-c` argument:
 ```bash
-linkedin-ai --config /path/to/custom/config
+linkedin-ai --config /path/to/custom/config.json
 ```
 ---
 

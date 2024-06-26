@@ -1,11 +1,12 @@
 from setuptools import setup, find_packages
+import setuptools_scm  # noqa
 
 with open("README.md", mode="r", encoding="utf-8") as f:
     README = f.read()
 
 setup(
     name="linkedin-ai",
-    version="0.6.0",
+    version="0.6.2",
     use_scm_version=True,
     setup_requires=["setuptools_scm>=8", "wheel"],
     description="Automate searching for jobs and submitting applications on LinkedIn using OpenAI",
@@ -43,6 +44,7 @@ setup(
         "linkedin job applications",
         "linkedin automation",
         "selenium",
+        "beautifulsoup",
         "bs4",
         "PyQt5",
         "gui",
