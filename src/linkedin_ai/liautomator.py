@@ -153,7 +153,7 @@ class LinkedInAutomator:
         """Navigates to the LinkedIn login page and sleeps for 2 seconds to allow page to load."""
         linkendin_login_url = "https://www.linkedin.com/login"
         if self.scraper.current_url != linkendin_login_url:
-            self.scraper.goto(linkendin_login_url, sleep_secs=2)
+            self.scraper.goto(linkendin_login_url, sleep_secs=1.5)
 
     def login(self, li_username: Optional[str] = None, li_password: Optional[str] = None) -> bool:
         """Logs into LinkedIn using the provided credentials or the ones provided in the constructor."""
@@ -177,7 +177,7 @@ class LinkedInAutomator:
         """Gets the filter options available for a LinkedIn job search."""
         self.scraper.goto(
             f"https://www.linkedin.com/jobs/search/?keywords={search_term}",
-            sleep_secs=3,
+            sleep_secs=1.5,
         )
         self.click_button_with_aria_label(
             "Show all filters. Clicking this button displays all available filter options."
@@ -211,7 +211,7 @@ class LinkedInAutomator:
 
     def get_collections(self):
         """Gets the available LinkedIn job collections."""
-        self.scraper.goto("https://www.linkedin.com/jobs/collections/", sleep_secs=2)
+        self.scraper.goto("https://www.linkedin.com/jobs/collections/", sleep_secs=1.5)
         collections = {}
         for collection_elm in self.scraper.soup.find_all("li", attrs={"class": "jobs-search-discovery-tabs__listitem"}):
             collection_name = collection_elm.text.strip()
@@ -314,7 +314,7 @@ class LinkedInAutomator:
         # Navigate to the LinkedIn job search page with the provided filters or collection
         if filters:
             search_url = self.get_filtered_search_url(filters)
-            self.scraper.goto(search_url, sleep_secs=3)
+            self.scraper.goto(search_url, sleep_secs=1.5)
 
         more_jobs = True
         while more_jobs:
@@ -396,7 +396,7 @@ class LinkedInAutomator:
         """Updates the Job object with details from the LinkedIn job page."""
         # Add the job to the db if it doesn't exist and navigate to the job page
         self.job_app_db.insert_model(job)
-        self.goto_job(job, sleep_secs=2)
+        self.goto_job(job, sleep_secs=1.5)
 
         # BeautifulSoup4 is used to parse the static HTML of the job page
         soup = self.scraper.soup
