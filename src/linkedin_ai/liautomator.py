@@ -463,7 +463,10 @@ class LinkedInAutomator:
         if hirer_card := soup.find("div", attrs={"class": "hirer-card__hirer-information"}):
             job.hiring_manager = HiringManager(
                 name=hirer_card.find("span", attrs={"class": "jobs-poster__name"}).text.strip(),
-                title=hirer_card.find("div", attrs={"class": "hirer-card__hirer-job-title"}).text.strip(),
+                title=hirer_card.find(
+                    "div",
+                    attrs={"class": lambda class_name: class_name in ("hirer-card__hirer-job-title", "linked-area")},
+                ).text.strip(),
                 linkedin_url=hirer_card.find("a", attrs={"href": True}).attrs["href"],
                 company_name=job.company.name,
             )
