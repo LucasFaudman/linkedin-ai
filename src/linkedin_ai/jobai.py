@@ -262,7 +262,7 @@ class JobAppAI(OpenAIManagerQObject):
                 ass_id=self.assistant_id,
                 thread_id=self.thread_id,
                 system_prompt=system_prompt,
-                tools_names=["search_answered_questions_db"],
+                tool_names=["search_answered_questions_db"],
                 sleep_interval=1,
             )
 
@@ -321,7 +321,7 @@ class JobAppAI(OpenAIManagerQObject):
                 ass_id=self.assistant_id,
                 thread_id=self.thread_id,
                 system_prompt=system_prompt,
-                tools_names=["search_answered_questions_db"],
+                tool_names=["search_answered_questions_db"],
                 sleep_interval=2,
             )
 
