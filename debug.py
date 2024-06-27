@@ -2,8 +2,6 @@ from code import interact
 from json import load
 from src.linkedin_ai import liautomator, app, models
 
-# app.main()
-
 with open("linkedin-ai-config.json") as f:
     config = load(f)
     config.pop("li_auto_login", None)
