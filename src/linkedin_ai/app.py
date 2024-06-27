@@ -33,7 +33,6 @@ def thread_safe_dbs(func):
             # Init the databases before calling the function
             instance.init_dbs()
             rval = func(instance, *args, **kwargs)
-            instance.close_dbs()
         except Exception as e:
             print(e)
         finally:
@@ -284,6 +283,8 @@ class MainWindow(qtw.QMainWindow):
         self.settings_widget.settingsUpdated.connect(self.setup_li_auto)
 
         self.show()
+        self.is_open = True
+
         if config_path.exists():
             # Set up LinkedInAutomator with the settings from the config file if it exists
             self.setup_li_auto(self.settings_widget.get_settings())
@@ -635,6 +636,7 @@ class MainWindow(qtw.QMainWindow):
         print("Quitting...")
         self.teardown_li_auto_thread_if_running()
         self.close()
+        self.is_open = False
 
     def closeEvent(self, event):
         self.quit()
@@ -655,9 +657,10 @@ def main():
     try:
         exit_code = app.exec()
     except KeyboardInterrupt:
-        window.quit()
         exit_code = 0
     finally:
+        if window.is_open:
+            window.quit()
         app.exit(exit_code)
 
 
