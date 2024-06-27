@@ -636,6 +636,9 @@ class MainWindow(qtw.QMainWindow):
         self.teardown_li_auto_thread_if_running()
         self.close()
 
+    def closeEvent(self, event):
+        self.quit()
+
 
 def main():
     parser = ArgumentParser()
