@@ -109,7 +109,7 @@ class CheckableComboBox(qtw.QComboBox):
     def addItems(self, texts, datalist=None, checked=False):
         for i, text in enumerate(texts):
             try:
-                userData = datalist[i]
+                userData = datalist[i] if datalist else None
             except (TypeError, IndexError):
                 userData = None
             self.addItem(text, userData, checked)
