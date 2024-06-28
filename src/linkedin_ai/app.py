@@ -16,6 +16,7 @@ from .widgets import (
 )
 from .liautomator import LinkedInAutomator, sleep
 from .models import Job, Question
+from .jobai import AIError
 from .core.aimanager import Assistant, Thread, Run, Message
 
 
@@ -34,7 +35,7 @@ def thread_safe_dbs(func):
             instance.init_dbs()
             rval = func(instance, *args, **kwargs)
         except Exception as e:
-            print(e)
+            print(f"thread_safe_dbs caught: {e}")
         finally:
             # Finally ensures dbs are closed even if an exception is raised
             instance.close_dbs()
@@ -85,16 +86,24 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
         qtc.QObject.__init__(self)
         LinkedInAutomator.__init__(self, *args, **kwargs)
 
+    @qtc.pyqtSlot()
     def init_scraper(self):
         """Initalize the SouperScraper. Emits signal when the scaper is ready."""
         LinkedInAutomator.init_scraper(self)
         self.scraperInitialized.emit()
 
+    @qtc.pyqtSlot()
     def init_dbs(self):
         """Initalize the databases. Emits signal when the databases are ready."""
         LinkedInAutomator.init_dbs(self)
         self.aiAndDBsInitialized.emit()
 
+    @qtc.pyqtSlot()
+    def teardown(self):
+        self.close_scraper()
+        self.close_dbs()
+
+    @qtc.pyqtSlot()
     def goto_login(self):
         """Go to the LinkedIn login page. Emits signal when ready for login input."""
         LinkedInAutomator.goto_login(self)
@@ -253,8 +262,11 @@ class LinkedInAutomatorQObject(LinkedInAutomator, qtc.QObject):
 
 
 class MainWindow(qtw.QMainWindow):
-    def __init__(self, config_path: Path):
+    def __init__(self, config_path: Path, print_status_updates: bool = True):
         super().__init__()
+
+        self.config_path = config_path
+        self.print_status_updates = print_status_updates
 
         self.setWindowTitle("LinkedIn AI")
         self.setGeometry(100, 100, 800, 800)
@@ -285,7 +297,7 @@ class MainWindow(qtw.QMainWindow):
         self.show()
         self.is_open = True
 
-        if config_path.exists():
+        if self.config_path.exists():
             # Set up LinkedInAutomator with the settings from the config file if it exists
             self.setup_li_auto(self.settings_widget.get_settings())
         else:
@@ -315,8 +327,6 @@ class MainWindow(qtw.QMainWindow):
         self.search_widget.search_filters_widget.getFilterOptions.connect(
             self.li_auto.get_filter_options
         )  # Get filters for search term in LinkedInAutomator thread
-        # self.li_auto.gettingFilterOptions.connect(
-        # self.getting_filter_options)  # Update statusbar when starting task
         self.search_widget.search_filters_widget.getFilterOptions.connect(
             self.getting_filter_options
         )  # Update statusbar when starting task
@@ -424,6 +434,7 @@ class MainWindow(qtw.QMainWindow):
         self.li_auto.ai.answerUnknown.connect(self.answer_unknown)
         self.li_auto.ai.writingCoverLetter.connect(self.writing_cover_letter)
         self.li_auto.ai.wroteCoverLetter.connect(self.wrote_cover_letter)
+        self.li_auto.ai.aiError.connect(self.ai_error)
 
     @qtc.pyqtSlot(dict)
     def setup_li_auto(self, settings):
@@ -449,8 +460,7 @@ class MainWindow(qtw.QMainWindow):
     def teardown_li_auto_thread_if_running(self):
         try:
             if self.li_auto:
-                self.li_auto.close_scraper()
-                self.li_auto.close_dbs()
+                self.li_auto.teardown()
         except Exception as e:
             print(e)
         finally:
@@ -471,7 +481,7 @@ class MainWindow(qtw.QMainWindow):
                 print("Login successful")
             else:
                 print("Login canceled")
-                self.quit()
+                self.close()
 
     @qtc.pyqtSlot()
     def populate_ui(self):
@@ -486,8 +496,10 @@ class MainWindow(qtw.QMainWindow):
         self.li_auto.get_collections()
 
     @qtc.pyqtSlot(str)
-    def update_status(self, message):
-        self.statusBar().showMessage(message)
+    def update_status(self, status_message: str):
+        self.statusBar().showMessage(status_message)
+        if self.print_status_updates:
+            print(status_message)
 
     # LinkedInAutomator Slots
     @qtc.pyqtSlot(str)
@@ -560,7 +572,6 @@ class MainWindow(qtw.QMainWindow):
         self.update_status(f"Deleted question: {question.question}")
 
     # JobAppAI Slots
-
     @qtc.pyqtSlot(Assistant)
     def created_assistant(self, assistant):
         self.update_status(f"Created assistant: {assistant.id}")
@@ -632,14 +643,72 @@ class MainWindow(qtw.QMainWindow):
     def wrote_cover_letter(self, job, cover_letter_text):
         self.update_status(f"Wrote cover letter for job: {job.title} at {job.company.name}: {cover_letter_text}")
 
-    def quit(self):
-        print("Quitting...")
-        self.teardown_li_auto_thread_if_running()
-        self.close()
-        self.is_open = False
+    # Error handling Slots
+    def handle_error(
+        self,
+        critical: bool = True,
+        error_code: str = "Unknown Error",
+        error_message: str = "An unknown error occurred.",
+        prefix="ERROR ",
+        item_sep=", ",
+        kv_sep=": ",
+        section_sep="\n\n",
+        help_message="",
+        button_message="Press OK to quit.",
+        buttons=qtw.QMessageBox.Ok,
+        **kwargs,
+    ):
+        """
+        Generic error handling method that shows an error message box and updates the status bar.
+        If the error is critical it will immediately tear down the LinkedInAutomator thread,
+        before showing the error message, then trigger a closeEvent to gracefully close the app after.
+        """
+
+        error_title = f"{prefix}{error_code}"
+        error_dict = {error_title: error_message, **kwargs}
+
+        status_message = item_sep.join(f"{k}{kv_sep}{v}" for k, v in error_dict.items())
+        self.update_status(status_message)
+
+        sections = filter(bool, (error_title, error_message, help_message, button_message))
+        error_message_box_text = section_sep.join(sections)
+
+        if critical:
+            # If the error is critical, tear down the LinkedInAutomator thread before showing the error message
+            self.teardown_li_auto_thread_if_running()
+            message_box_cls = qtw.QMessageBox.critical
+        else:
+            message_box_cls = qtw.QMessageBox.warning
+
+        # Show the error message box
+        message_box_cls(self, error_title, error_message_box_text, buttons)
+        # Close the app if the error is critical
+        if critical:
+            self.close()
+
+    @qtc.pyqtSlot(AIError)
+    def ai_error(self, error: AIError):
+        self.handle_error(
+            critical=error.is_critical,
+            error_code=error.stdcode,
+            error_message=error.stdmessage,
+            prefix=f"{error.clsname} ",
+        )
 
     def closeEvent(self, event):
-        self.quit()
+        print("Quitting...")
+        self.teardown_li_auto_thread_if_running()
+        print("Teardown complete.")
+        event.accept()
+        print("closeEvent accepted.")
+        self.is_open = False
+        app.quit()
+        print("LinkedIn AI exited successfully.")
+        exit(0)
+
+
+# Global QApplication instance so it can be quit when a closeEvent occurs
+app = qtw.QApplication([])
 
 
 def main():
@@ -652,16 +721,12 @@ def main():
     )
     args = parser.parse_args()
 
-    app = qtw.QApplication([])
-    window = MainWindow(config_path=args.config_path)
     try:
-        exit_code = app.exec()
+        window = MainWindow(config_path=args.config_path)
+        app.exec()
     except KeyboardInterrupt:
-        exit_code = 0
-    finally:
         if window.is_open:
-            window.quit()
-        app.exit(exit_code)
+            window.close()
 
 
 if __name__ == "__main__":

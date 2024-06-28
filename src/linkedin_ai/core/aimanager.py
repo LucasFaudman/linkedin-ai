@@ -64,6 +64,12 @@ class OpenAIDB(BaseDB):
 class RunStatusError(Exception):
     """Run status is cancelled, failed, or expired"""
 
+    def __init__(self, status, last_error) -> None:
+        self.status = status
+        self.code = last_error.code
+        self.message = last_error.message
+        super().__init__(f"Run status: {status}, code: {self.code}, message: {self.message}")
+
 
 class RateLimitError(Exception):
     """OpenAI API rate limit reached"""
@@ -99,44 +105,6 @@ class OpenAIManager:
         self.model = model
         print(f"Changed OpenAI model to {self.model}")
 
-    def _try_openai(self, getter_fn, extractor_fn=lambda x: x, **kwargs):
-        """
-        Tries to get a response from OpenAI and extract the result. Catches
-        OpenAIError and other exceptions if they occur when extracting the desired result.
-        """
-
-        try:
-            response = getter_fn(**kwargs)
-        except OpenAIError as e:
-            print(f"OpenAI Error: {e}")
-            return f"OpenAI Error: {e}", e
-
-        try:
-            result = extractor_fn(response)
-        except Exception as e:
-            print(f"Error extracting result: {e}")
-            return response, f"Error extracting result: {e}"
-
-        return response, result
-
-    def _try_load_json_result(self, result):
-        """
-        Tries to load a result as json, If that fails, tries to load it as a python literal.
-        If that fails, returns a dict with the errors and the result.
-        """
-
-        try:
-            return json_loads(result)
-        except Exception as e1:
-            try:
-                return ast_literal_eval(result)
-            except Exception as e2:
-                return {
-                    "error_json_loads": e1,
-                    "error_ast_literal_eval": e2,
-                    "result": result,
-                }
-
     def num_tokens_from_messages(self, messages, disallowed_special=()):
         """Returns the number of tokens used by a list of messages."""
         try:
@@ -164,13 +132,13 @@ class OpenAIManager:
     def recursively_make_serializeable(self, obj):
         """Recursively makes an object serializeable by converting it to a dict or list of dicts and converting all non-string values to strings."""
         serializeable_types = (str, int, float, bool, type(None))
+        if isinstance(obj, serializeable_types):
+            return obj
         if isinstance(obj, dict):
             return {k: self.recursively_make_serializeable(v) for k, v in obj.items()}
         if isinstance(obj, list):
             return [self.recursively_make_serializeable(item) for item in obj]
-        if not isinstance(obj, serializeable_types):
-            return str(obj)
-        return obj
+        return str(obj)
 
     def format_content(self, content):
         """Formats content for use a message content. If content is not a string, it is converted to json_"""
@@ -185,7 +153,7 @@ class OpenAIManager:
         return dict(enumerate(content))
 
     def create_assistant(self, **kwargs):
-        """Creates an assistant and stores it in ai_assistants dict and ai_assistants_dir/assistant_ids.txt"""
+        """Creates an Assistant and store it in the OpenAIDB if database is enabled (db_path is set)."""
 
         assistant = self.client.beta.assistants.create(
             model=kwargs.pop("model", self.model),
@@ -199,7 +167,7 @@ class OpenAIManager:
         return assistant
 
     def create_thread(self):
-        """Creates a thread and stores it in ai_threads dict and ai_assistants_dir/thread_ids.txt"""
+        """Creates a Thread and store it in the OpenAIDB if database is enabled (db_path is set)."""
 
         thread = self.client.beta.threads.create()
 
@@ -210,8 +178,7 @@ class OpenAIManager:
         return thread
 
     def create_run(self, ass_id, thread_id, **kwargs):
-        """Creates a run and stores it in ai_runs dict and ai_assistants_dir/run_ids.txt"""
-
+        """Creates a Run and store it in the OpenAIDB if database is enabled (db_path is set)."""
         run = self.client.beta.threads.runs.create(assistant_id=ass_id, thread_id=thread_id, **kwargs)
 
         if self.db:
@@ -221,7 +188,7 @@ class OpenAIManager:
         return run
 
     def get_assistant(self, ass_id):
-        """Gets assistant from self or openai client if not retrieved yet"""
+        """Gets Assistant from self or openai client if not retrieved yet"""
         assistant = self.ai_assistants.get(ass_id)
 
         if not assistant:
@@ -263,17 +230,21 @@ class OpenAIManager:
             return message
 
         except BadRequestError as e:
-            print(e.message)
+            print(f"BadRequestError: {e}")
             active_run_id = next((msg_part for msg_part in e.message.split() if "run_" in msg_part), None)
             if active_run_id:
-                canceled_run = self.cancel_run(active_run_id, thread_id)
-                print("Canceled Run", canceled_run)
+                # Cancel the active Run and retry adding the message to the thread
+                # since the Request contents did not trigger the BadRequestError
+                self.cancel_run(active_run_id, thread_id)
+                return self.add_message_to_thread(content, thread_id)
 
-            return self.add_message_to_thread(content, thread_id)
+            # Request contents triggered the BadRequestError so raise the error
+            raise e
 
     def cancel_run(self, run_id, thread_id):
         print(f"Canceling {run_id}")
         canceled_run = self.client.beta.threads.runs.cancel(run_id=run_id, thread_id=thread_id)
+        print("Canceled Run", canceled_run)
 
         if self.db:
             self.db.update_model(canceled_run)
@@ -289,7 +260,7 @@ class OpenAIManager:
 
         return run_steps
 
-    def wait_for_response(self, thread_id, run_id, sleep_interval=5, **kwargs):
+    def wait_for_response(self, thread_id, run_id, sleep_interval=1, **kwargs):
         """
         Waits for a response and handles status updates.
         Calls handle_submit_tool_outputs_required to submit tool outputs when run requires action.
@@ -308,7 +279,7 @@ class OpenAIManager:
                 # Handles tool calls and submits tool outputs to run then recursively calls wait_for_response
                 return self.handle_submit_tool_outputs_required(run, sleep_interval, **kwargs)
 
-            if run.status in ("cancelled", "failed", "expired"):
+            if run.status in ("cancelled", "failed", "expired", "error") and run.last_error:
                 self.save_run_steps(run_id, thread_id)
                 raise RunStatusError(run.status, run.last_error)
 
@@ -372,7 +343,7 @@ class OpenAIManager:
         thread_id=None,
         system_prompt=None,
         tool_names=None,
-        sleep_interval=5,
+        sleep_interval=1,
         run_status_error_retries=1,
         **kwargs,
     ):
@@ -415,19 +386,19 @@ class OpenAIManager:
             return ass, thread, run, messages
 
         except RunStatusError as e:
-            print(e)
+            print(f"run_with_assistant caught: {e}")
 
             if run_status_error_retries > 0:
                 print(f"Retrying {run_status_error_retries} more time(s)")
 
                 return self.run_with_assistant(
                     *content,
-                    ass_id,
-                    thread_id,
-                    system_prompt,
-                    tool_names,
-                    sleep_interval,
-                    run_status_error_retries - 1,  # Decrement retries
+                    ass_id=ass_id,
+                    thread_id=thread_id,
+                    system_prompt=system_prompt,
+                    tool_names=tool_names,
+                    sleep_interval=sleep_interval,
+                    run_status_error_retries=run_status_error_retries - 1,
                     **kwargs,
                 )
 

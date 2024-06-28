@@ -1,5 +1,6 @@
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Iterable, Type
 from pathlib import Path
+from functools import wraps
 from datetime import datetime
 from docx import Document
 from PyQt5 import QtCore as qtc
@@ -9,12 +10,75 @@ from .core.aimanager import (
     Thread,
     Run,
     Message,
+    OpenAIError,
     RunStatusError,
     sleep,
     json_loads,
 )
 from .jobdb import JobAppDB
 from .models import Question, Job
+
+
+class AIError:
+    def __init__(
+        self,
+        error: Exception,
+        critical_errors: Tuple[Type[Exception], ...] = (RunStatusError,),
+        stdcode_parts: Iterable[str] = ("status", "status_code", "code", "type"),
+        stdmessage_parts: Iterable[str] = ("message", "detail", "description"),
+    ) -> None:
+        self._error = error
+        self.is_critical = self.check_critical(critical_errors)
+        self.stdcode = " ".join(self.iter_stdcode_parts(stdcode_parts)) or "UnknownAIError"
+        self.stdmessage = f"{self.stdcode}: " + (
+            " ".join(self.iter_stdmessage_parts(stdmessage_parts)) or "Unknown AI Error"
+        )
+        self.clsname = type(error).__name__
+
+        print(f"AI Error: {self.stdmessage}")
+
+    def check_critical(self, critical_errors: Tuple[Type[Exception], ...]) -> bool:
+        """
+        Determines if an OpenAI error is critical and should be raised.
+        """
+        return isinstance(self._error, critical_errors)
+
+    def iter_stdcode_parts(self, stdcode_parts: Iterable[str]) -> Iterable[str]:
+        """
+        Standardizes the error code for an OpenAI error.
+        """
+        for attr in stdcode_parts:
+            if (val := getattr(self._error, attr, None)) is not None:
+                yield (val if isinstance(val, str) else str(val)).replace("_", " ").title()
+
+    def iter_stdmessage_parts(self, stdmessage_parts: Iterable[str]) -> Iterable[str]:
+        """
+        Standardizes the error message for an OpenAI error.
+        """
+        for attr in stdmessage_parts:
+            if (val := getattr(self._error, attr, None)) is not None:
+                yield val if isinstance(val, str) else str(val)
+
+    def __str__(self) -> str:
+        return self.stdmessage
+
+
+def emit_ai_errors(func):
+    """
+    Decorator to ensure that OpenAI errors are caught and emitted as signals.
+    """
+
+    @wraps(func)
+    def wrapper(instance, *args, **kwargs):
+        try:
+            return func(instance, *args, **kwargs)
+        except (OpenAIError, RunStatusError) as e:
+            aierror = AIError(e)
+            print(f"Caught AI Error: {e}. \nEmitting as AIError signal: {aierror}")
+            instance.aiError.emit(aierror)
+            raise e
+
+    return wrapper
 
 
 class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
@@ -33,6 +97,7 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
     toolOutputsSubmitted = qtc.pyqtSignal(str, dict, object)
     waitingForResponse = qtc.pyqtSignal(int)
     responseReceived = qtc.pyqtSignal(object)
+    aiError = qtc.pyqtSignal(AIError)
 
     def __init__(self, *args, **kwargs) -> None:
         qtc.QObject.__init__(self)
@@ -56,7 +121,7 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
         self.createdRun.emit(run)
         return run
 
-    def cancel_run(self, *args, **kwargs):
+    def cancel_run(self, *args, **kwargs) -> Run:
         """Cancels a run and emits cancelledRun signal with the Run object."""
         cancelled_run = OpenAIManager.cancel_run(self, *args, **kwargs)
         self.cancelledRun.emit(cancelled_run)
@@ -68,7 +133,7 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
         self.addedMessageToThread.emit(message)
         return message
 
-    def wait_for_response(self, thread_id, run_id, sleep_interval=5, **kwargs):
+    def wait_for_response(self, thread_id, run_id, sleep_interval=1, **kwargs):
         """
         Waits for a response and handles status updates.
         Calls handle_submit_tool_outputs_required to submit tool outputs when run requires action.
@@ -94,7 +159,7 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
                 # Handles tool calls and submits tool outputs to run then recursively calls wait_for_response
                 return self.handle_submit_tool_outputs_required(run, sleep_interval, **kwargs)
 
-            if run.status in ("cancelled", "failed", "expired"):
+            if run.status in ("cancelled", "failed", "expired", "error") and run.last_error:
                 raise RunStatusError(run.status, run.last_error)
 
             if run.status == "completed":
@@ -113,7 +178,7 @@ class OpenAIManagerQObject(OpenAIManager, qtc.QObject):
         self.responseReceived.emit(messages)
         return messages
 
-    def handle_submit_tool_outputs_required(self, run, sleep_interval=5, **kwargs):
+    def handle_submit_tool_outputs_required(self, run, sleep_interval=1, **kwargs):
         """
         Executes tool calls and submits tool outputs to run.
 
@@ -225,6 +290,7 @@ class JobAppAI(OpenAIManagerQObject):
         """Add resume to system prompt."""
         return system_prompt + f"\nResume:\n{self.resume}"
 
+    @emit_ai_errors
     def answer_job_questions(self, *questions: Question) -> Tuple[Question, ...]:
         """
         Answers job application questions using the AI assistant.
@@ -281,6 +347,7 @@ class JobAppAI(OpenAIManagerQObject):
 
         return questions
 
+    @emit_ai_errors
     def write_job_cover_letters(self, *jobs: Job) -> Dict[Job, Path]:
         """
         Writes job application cover letters using the AI assistant.
@@ -322,7 +389,7 @@ class JobAppAI(OpenAIManagerQObject):
                 thread_id=self.thread_id,
                 system_prompt=system_prompt,
                 tool_names=["search_answered_questions_db"],
-                sleep_interval=2,
+                sleep_interval=1,
             )
 
             self.assistant_id = ass.id
