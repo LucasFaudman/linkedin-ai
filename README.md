@@ -15,6 +15,15 @@ Automate **searching for jobs** and **submitting applications** on LinkedIn usin
 
 ![demo-teaser](https://github.com/LucasFaudman/linkedin-ai/assets/52257695/76eedba2-70bd-46d6-892f-c9057e3dcb5a)
 
+<details>
+<summary>
+Full Demo Video
+</summary>
+
+
+
+</details>
+
 ## Index
 - [Why use LinkedIn AI?](#why-use-linkedin-ai)
 <!-- - [Features](#features) -->
