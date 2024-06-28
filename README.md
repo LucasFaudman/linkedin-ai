@@ -170,18 +170,31 @@ When this happens you will be prompted to provide the answer, and next time the 
 Any questions you have already answered in previous job applications on LinkedIn will automatically be added to your DB for future use.
 
 
-> **IMPORTANT:** Begin by first doing applications with both `Ask for Answer When Needed` and `Verify AI Provided Answers` enabled. Once you are satisfied with the accuracy of the AI answers, then you can allow it to run fully autonomously.
+> **IMPORTANT:** Begin by first doing applications with `Ask for Answer When Needed` and `Verify AI Provided Answers` **both checked**. Once you are satisfied with the accuracy of the AI answers, then you can allow it to run fully autonomously by unchecking `Verify AI Provided Answers`.
 
 
 ### AI Automation Options
+> Determine the **level of autonomy** given to LinkedIn AI and **when it should stop to ask you to *approve*, *edit*, or *enter*** an answer.
+
 | Automation Option | Checked | Unchecked |
 | --- | --- | --- |
-| `Ask for Answer When Needed` | Ask you for the answer when the AI is unsure. Store question, answer and choices, for future context. | Set job status to `needs answer`, save progress on LinkedIn and continue with next application. |
-| `Verify AI Provided Answers` | Always verify AI answers before submitting. **Keep enabled until you are satisfied with AI answers.** | Set job status to `needs answer`, save progress on LinkedIn and continue with next application. |
-
-> **IMPORTANT:** If both are unchecked, LinkedIn AI will skip each application unless every question has an answer already saved in your DB. To go back and finish them later you can filter for jobs with status `needs answer` in the `View Job Database` tab.
+| `Ask for Answer When Needed` | **Ask you for the answer** when the AI is selects `ANSWER UNKNOWN`. **Save the answer you provided**, question, and choices, in the DB for future context. | Sets job status to `needs answer`, save progress on LinkedIn, and continue with next application. **Answer is NOT saved in the DB**. |
+| `Verify AI Provided Answers` | **Always ask you to verify/edit AI answers before submitting**, even when the AI selects an answer it thinks is correct. **Keep this enabled until you are satisfied with AI answers.** | **Use the AI provided answers** to fill out the application, ***without*** asking you each time. **Answers are saved to the DB** to avoid wasting tokens on repeat questions. |
 
 ---
+
+| `Ask for Answer When Needed` | `Verify AI Provided Answers` | AI Selects an Answer | AI Selects `ANSWER UNKNOWN` | Action |
+| --- | --- | --- | --- | --- |
+| Checked | Checked | **Ask you before submitting** to ***approve or edit*** the answer. | **Ask you before submitting** to ***enter or select*** the answer. |
+| Unchecked | Checked | **Ask you before submitting** to ***approve or edit*** the answer. | **Skip question**, set job status to `needs answer`, **save progress** for later, and ***begin next application***. |
+| Checked | Unchecked | **Submit the answer ***without*** asking**. | **Ask you before submitting** to ***enter or select*** the answer. |
+| Unchecked | Unchecked | **Submit the answer ***without*** asking** | **Skip question**, set job status to `needs answer`, **save progress** for later, and ***begin next application***. |
+
+
+
+
+
+
 
 ## Generating Custom Cover Letters
 > Feature is currently enabled and working, but UI improvements coming soon. Docs will be finished once UI is stable.
