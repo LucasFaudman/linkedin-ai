@@ -76,7 +76,6 @@ SQLDANTIC_TYPE_MAP: SQLDanticTypeMap = {
     Annotated: "ANNOTATED",
     Sequence: "SEQUENCE",
     Mapping: "MAPPING",
-    # object: "OBJECT",
 }
 
 # Represents a field in a model with its type and item type (if it is a sequence)
@@ -329,21 +328,6 @@ class BaseDB:
             self.connected = False
         self.ignore_sqlite_errors = ignore_sqlite_errors
 
-    def __del__(self) -> None:
-        self.close_connection()
-
-    def create_connection(self) -> None:
-        try:
-            self.conn = sqlite3.connect(self.db_file)
-            self.cursor = self.conn.cursor()
-            self.connected = True
-        except SqliteError as e:
-            print(e)
-
-    def close_connection(self) -> None:
-        if self.connected:
-            self.conn.close()
-
     def get_sqldantic_schema(self, model: Union[_BaseModel, Type[_BaseModel]]) -> SQLDanticSchema:
         return SQLDanticSchema(
             model=model,
@@ -352,19 +336,35 @@ class BaseDB:
             table_name_transformer=self.table_name_transformer,
         )
 
+    def __del__(self) -> None:
+        self.close_connection()
+
+    @catch_sqlite_errors
+    def create_connection(self) -> None:
+        self.conn = sqlite3.connect(self.db_file)
+        self.cursor = self.conn.cursor()
+        self.connected = True
+
+    @catch_sqlite_errors
+    def close_connection(self) -> None:
+        if self.connected:
+            self.conn.close()
+            self.connected = False
+
     @catch_sqlite_errors
     def execute_and_commit(self, query: str, values: Tuple) -> None:
         self.cursor.execute(query, values)
         self.conn.commit()
         # print(f"Executed {query} with values {values}")
 
-    def execute_queries(self, query_gen: Union[Iterator[Query], Tuple[Query]]) -> None:
-        # query_values_hashes = set()
+    def execute_queries(self, query_gen: Union[Iterator[Query], Tuple[Query]], remove_duplicates=False) -> None:
+        query_hashes = set() if remove_duplicates else None
         for query_values in query_gen:
-            # query_values_hash = hash(query_values)
-            # if query_values_hash not in query_values_hashes:
-            #    query_values_hashes.add(query_values_hash)
-            self.execute_and_commit(*query_values)
+            if query_hashes is None:
+                self.execute_and_commit(*query_values)
+            elif (query_hash := hash(query_values)) not in query_hashes:
+                query_hashes.add(query_hash)
+                self.execute_and_commit(*query_values)
 
     @catch_sqlite_errors
     def recusive_create_table_queries(
@@ -661,7 +661,6 @@ class BaseDB:
 
             model_instance: _BaseModel = sqldantic_schema.model(**model_dict)
             yield model_instance
-            # yield sqldantic_schema.model(**model_dict)
 
     def get_models(
         self,
