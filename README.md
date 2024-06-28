@@ -27,7 +27,7 @@ Automate **searching for jobs** and **submitting applications** on LinkedIn usin
 - [Searching for Jobs](#searching-for-jobs)
     - [Search Filters and Job Collections](#search-filters-and-job-collections)
     - [Removing Jobs From Search Results](#removing-jobs-from-search-results)
-    - [Finding 'Easy Apply' Jobs (Application can be Submitted on LinkedIn)](#finding-easy-apply-jobs)
+    - [Finding `Easy Apply` Jobs (Application can be Submitted on LinkedIn)](#finding-easy-apply-jobs)
 - [Submitting Job Applications](#submitting-job-applications)
     - [Providing your Resume as Context for your AI](#providing-your-resume-as-context-for-your-ai)
     - [Training your AI to Answer Questions Like You](#training-your-ai-to-answer-questions-like-you)
@@ -53,7 +53,7 @@ With over [88% of companies](https://artsmart.ai/blog/how-many-companies-use-ai-
 ### Automate Finding Jobs
 > LinkedIn AI **streamlines your job search process**, allowing you to **find relevant job postings efficiently**.
 
-It leverages LinkedIn's **advanced search filters** and [`SouperScraper`]() to search through the hundreds of applications and **pinpoint opportunities that match your criteria, saving you time and effort**.
+It leverages LinkedIn's **advanced search filters** and [`SouperScraper`](https://github.com/LucasFaudman/souper-scraper) to search through the hundreds of applications and **pinpoint opportunities that match your criteria, saving you time and effort**.
 
 ### Automate Filling Out and Submitting Job Applications
 > LinkedIn AI **automates the repetitive and time-consuming task of filling out job applications**.
@@ -140,9 +140,9 @@ linkedin-ai --config /path/to/custom/config.json
 Any jobs you are not interested in can be removed by selecting them and clicking `Remove Selected Items`.
 > **NOTE:** This will prevent these jobs from being written to your Jobs DB.
 
-### Finding 'Easy Apply' Jobs (Application can be Submitted on LinkedIn)
+### Finding `Easy Apply` Jobs (Application can be Submitted on LinkedIn)
 The first filter `Easy Apply` determines if the job application can be completed natively through LinkedIn.
-> **IMPORTANT:** All jobs can be searched for, stored in the Jobs DB, scraped, opened, etc, but currently **ONLY 'Easy Apply' applications can be submitted by the AI.**
+> **IMPORTANT:** All jobs can be searched for, stored in the Jobs DB, scraped, opened, etc, but currently **ONLY `Easy Apply` applications can be submitted by the AI.**
 
 ---
 
