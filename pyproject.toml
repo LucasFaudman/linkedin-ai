@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 authors = [{name = "Lucas Faudman", email = "lucasfaudman@gmail.com"}]
 dynamic = ["classifiers"]
 name = "linkedin-ai"
-version = "0.6.4"
+version = "0.6.5"
 requires-python = ">=3.7"
 readme = "README.md"
 license = { file = "LICENSE" }
