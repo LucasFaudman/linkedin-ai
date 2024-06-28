@@ -128,13 +128,16 @@ class LinkedInAutomator:
                 self.job_app_db.close_connection()
         except Exception as e:
             print(f"Failed to close JobAppDB connection. Error: {e}")
+        finally:
+            self.job_app_db = None
 
         try:
             if self.ai and self.ai.db:
                 self.ai.db.close_connection()
-                self.ai.job_app_db.close_connection()
         except Exception as e:
             print(f"Failed to close JobAppAI db connection. Error: {e}")
+        finally:
+            self.ai = None
 
     def init_scraper(self):
         """Initializes the SouperScraper object for scraping LinkedIn using the provided WebDriver settings."""
