@@ -332,7 +332,13 @@ class LinkedInAutomator:
 
     def click_button_with_aria_label(self, label="") -> None:
         """Clicks a button on the LinkedIn page with the provided aria-label."""
-        self.scraper.find_element_by_css_selector(f"button[aria-label='{label}']").click()
+        if aria_button := self.scraper.wait_for_element_to_be_clickable_by_css_selector(
+            f"button[aria-label='{label}']"
+        ):
+            aria_button.click()
+        else:
+            print(f"Failed to click button with aria-label '{label}'")
+            raise Exception(f"Failed to click button with aria-label '{label}'")
 
     def click_next_page(self) -> bool:
         """Attempts to click the next page button on the LinkedIn search page. Returns True if successful, False otherwise."""
