@@ -17,10 +17,14 @@ Automate **searching for jobs** and **submitting applications** on LinkedIn usin
 
 <details>
 <summary>
-Full Demo Video
+Full Demo Videos
 </summary>
 
+### Starting the App, Login and Searching
+https://github.com/LucasFaudman/linkedin-ai/assets/52257695/a840de6f-c122-4bb4-aa19-6fbe7b5e23dc
 
+### Applying
+https://github.com/LucasFaudman/linkedin-ai/assets/52257695/0d45fe82-2a52-45b8-91f3-24db1d5556e8
 
 </details>
 
